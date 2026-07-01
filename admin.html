@@ -302,10 +302,10 @@
       </table>
     </div>
 
-    <!-- Hall of Fame of Rule Breakers (Persistent History) -->
+    <!-- Student Integrity Audit Log (Persistent History) -->
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 style="font-size: 16px; color: #ffffff; margin: 0; font-weight: 600;">🏆 Hall of Fame of Rule Breakers (Persistent History)</h2>
+        <h2 style="font-size: 16px; color: #ffffff; margin: 0; font-weight: 600;">🛡️ Student Integrity Audit Log (Persistent History)</h2>
         <div style="display: flex; gap: 8px;">
           <button id="export-csv-btn" class="btn" style="width: auto !important; padding: 4px 10px !important; background: #0284c7 !important; border-color: #0369a1 !important; font-size: 11px !important;" onclick="exportToCSV()">Export CSV</button>
           <button id="export-json-btn" class="btn" style="width: auto !important; padding: 4px 10px !important; background: #0f766e !important; border-color: #115e59 !important; font-size: 11px !important;" onclick="exportToJSON()">Export JSON</button>
@@ -325,7 +325,7 @@
         </thead>
         <tbody id="fame-table-body">
           <tr>
-            <td colspan="6" style="padding: 16px 8px; text-align: center; color: #858585;">Loading hall of fame...</td>
+            <td colspan="6" style="padding: 16px 8px; text-align: center; color: #858585;">Loading student integrity logs...</td>
           </tr>
         </tbody>
       </table>
@@ -519,7 +519,7 @@
           if (data.length === 0) {
             fameBody.innerHTML = `
               <tr>
-                <td colspan="6" style="padding: 16px 8px; text-align: center; color: #858585;">No entries in Hall of Fame.</td>
+                <td colspan="6" style="padding: 16px 8px; text-align: center; color: #858585;">No entries in Student Integrity Audit Log.</td>
               </tr>
             `;
             return;
@@ -620,7 +620,7 @@
     };
 
     window.clearAllHallOfFame = function() {
-      if (!confirm('Are you sure you want to clear the entire Hall of Fame? This cannot be undone.')) return;
+      if (!confirm('Are you sure you want to clear the entire Student Integrity Audit Log? This cannot be undone.')) return;
       fetch('/api/clear-hall-of-fame', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -628,10 +628,10 @@
       })
       .then(res => {
         if (!res.ok) throw new Error();
-        showStatus('Cleared all Hall of Fame records successfully.');
+        showStatus('Cleared all Student Integrity Audit Log records successfully.');
         fetchHallOfFame();
       })
-      .catch(err => showStatus('Failed to clear Hall of Fame.', true));
+      .catch(err => showStatus('Failed to clear Student Integrity Audit Log.', true));
     };
 
     window.exportToCSV = function() {
