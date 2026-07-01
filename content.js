@@ -107,6 +107,57 @@ function safeSendMessage(message, callback) {
 
 let wasFullscreen = false;
 
+function isContextInvalidated() {
+  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+    cleanupAllExtensionContext();
+    return true;
+  }
+  return false;
+}
+
+function cleanupAllExtensionContext() {
+  localExamActive = false;
+  if (websiteChatbotHideInterval) {
+    clearInterval(websiteChatbotHideInterval);
+    websiteChatbotHideInterval = null;
+  }
+  if (urlCheckInterval) {
+    clearInterval(urlCheckInterval);
+    urlCheckInterval = null;
+  }
+  if (devToolsCheckInterval) {
+    clearInterval(devToolsCheckInterval);
+    devToolsCheckInterval = null;
+  }
+  if (questionDivCheckInterval) {
+    clearInterval(questionDivCheckInterval);
+    questionDivCheckInterval = null;
+  }
+  if (lockoutPollInterval) {
+    clearInterval(lockoutPollInterval);
+    lockoutPollInterval = null;
+  }
+  if (tamperObserver) {
+    try {
+      tamperObserver.disconnect();
+    } catch (e) {}
+    tamperObserver = null;
+  }
+  
+  // Remove event listeners
+  try {
+    window.removeEventListener('blur', handleBlur);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.removeEventListener('keydown', handleKeyDown, true);
+    document.removeEventListener('contextmenu', handleContextMenu, true);
+    document.removeEventListener('copy', handleCopy);
+    document.removeEventListener('cut', handleCut);
+    document.removeEventListener('paste', handlePaste);
+    document.removeEventListener('click', handleExamNavigationBlocker, true);
+  } catch (e) {}
+}
+
 function safeHideElement(el) {
   if (!el) return;
   el.dataset.programmatic = 'true';
@@ -398,6 +449,7 @@ function startTamperMonitor() {
 
   // Create MutationObserver to watch document body for structural or attribute changes
   tamperObserver = new MutationObserver((mutations) => {
+    if (isContextInvalidated()) return;
     if (!localExamActive) return;
 
     let detectedTampering = false;
