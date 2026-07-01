@@ -260,6 +260,18 @@ function isQuestionDivPresent() {
   return false;
 }
 
+function restoreExamDOMState() {
+  const startSection = document.getElementById('start-section');
+  const examSection = document.getElementById('exam-section');
+  if (startSection && startSection.style.display !== 'none') {
+    startSection.style.setProperty('display', 'none', 'important');
+  }
+  if (examSection && (examSection.style.display === 'none' || examSection.classList.contains('hidden'))) {
+    examSection.style.setProperty('display', 'flex', 'important');
+    examSection.classList.remove('hidden');
+  }
+}
+
 function startQuestionDivMonitor() {
   if (questionDivCheckInterval) clearInterval(questionDivCheckInterval);
   questionDivMissingCount = 0;
@@ -271,6 +283,9 @@ function startQuestionDivMonitor() {
       questionDivCheckInterval = null;
       return;
     }
+
+    // Automatically recover the visual DOM state of the exam page on reloads
+    restoreExamDOMState();
 
     // Do not check or increment missing count if currently locked out
     if (document.getElementById('prodigy-lockout-overlay')) {

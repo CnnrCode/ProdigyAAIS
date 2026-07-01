@@ -5,16 +5,39 @@ const path = require('path');
 const PORT = 8000;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
-// Memory state to hold active proctoring sessions and lockout requests
-const activeSessions = {};
+const SESSIONS_PATH = path.join(__dirname, 'sessions.json');
+const HALL_OF_FAME_PATH = path.join(__dirname, 'hall_of_fame.json');
 
-const HAME_OF_FAME_PATH = path.join(__dirname, 'hall_of_fame.json');
+// Helper to get active proctoring sessions safely
+function getActiveSessions() {
+  try {
+    if (fs.existsSync(SESSIONS_PATH)) {
+      const data = fs.readFileSync(SESSIONS_PATH, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Error reading active sessions:', err);
+  }
+  return {};
+}
+
+// Helper to save active proctoring sessions safely
+function saveActiveSessions(sessions) {
+  try {
+    fs.writeFileSync(SESSIONS_PATH, JSON.stringify(sessions, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error writing active sessions:', err);
+  }
+}
+
+// Load session state from file
+let activeSessions = getActiveSessions();
 
 // Helper to get Hall of Fame safely
 function getHallOfFame() {
   try {
-    if (fs.existsSync(HAME_OF_FAME_PATH)) {
-      const data = fs.readFileSync(HAME_OF_FAME_PATH, 'utf8');
+    if (fs.existsSync(HALL_OF_FAME_PATH)) {
+      const data = fs.readFileSync(HALL_OF_FAME_PATH, 'utf8');
       return JSON.parse(data);
     }
   } catch (err) {
@@ -26,7 +49,7 @@ function getHallOfFame() {
 // Helper to save Hall of Fame safely
 function saveHallOfFame(data) {
   try {
-    fs.writeFileSync(HAME_OF_FAME_PATH, JSON.stringify(data, null, 2), 'utf8');
+    fs.writeFileSync(HALL_OF_FAME_PATH, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
     console.error('Error writing hall of fame:', err);
   }
@@ -172,6 +195,9 @@ const server = http.createServer((req, res) => {
           activeSessions[username].flags = 0;
           activeSessions[username].locks = 0;
         }
+        
+        saveActiveSessions(activeSessions);
+        
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
       } catch (err) {
@@ -202,6 +228,8 @@ const server = http.createServer((req, res) => {
         const durationSec = data.lockoutExpiry ? Math.round((data.lockoutExpiry - Date.now()) / 1000) : 0;
         const lockoutMsg = durationSec > 0 ? `Session suspended for ${durationSec} seconds` : 'Session suspended';
         addHallOfFameRecord(username, 'lockout', lockoutMsg, new Date().toISOString());
+
+        saveActiveSessions(activeSessions);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
@@ -238,6 +266,8 @@ const server = http.createServer((req, res) => {
         
         addHallOfFameRecord(username, 'unlock_request', 'Requested administrator unlock', new Date().toISOString());
 
+        saveActiveSessions(activeSessions);
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
       } catch (err) {
@@ -263,6 +293,8 @@ const server = http.createServer((req, res) => {
         }
         
         addHallOfFameRecord(username, 'unlock', 'Unlocked by Administrator', new Date().toISOString());
+
+        saveActiveSessions(activeSessions);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
