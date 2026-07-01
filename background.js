@@ -15,8 +15,12 @@ let remoteConfigSynced = false;
 
 // Remote config sync helper
 function syncRemoteConfig(callback) {
-  fetch('http://localhost:8000/api/config')
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+  fetch('http://localhost:8000/api/config', { signal: controller.signal })
     .then(res => {
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error('Sync failed');
       return res.json();
     })
@@ -43,6 +47,7 @@ function syncRemoteConfig(callback) {
       }
     })
     .catch(err => {
+      clearTimeout(timeoutId);
       console.warn('Prodigy Shield: Could not sync remote config. Using stored settings.', err);
       remoteConfigSynced = false;
       if (callback) callback(false);
@@ -258,8 +263,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const fetchOptions = message.options || {};
     fetchOptions.method = fetchOptions.method || 'GET';
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    fetchOptions.signal = controller.signal;
+    
     fetch(message.url, fetchOptions)
       .then(async (res) => {
+        clearTimeout(timeoutId);
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
@@ -272,6 +282,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       })
       .catch((err) => {
+        clearTimeout(timeoutId);
         sendResponse({ success: false, error: err.message });
       });
     return true; // Keep channel open for async response
