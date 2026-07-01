@@ -229,6 +229,15 @@ function startQuestionDivMonitor() {
 
     if (isQuestionDivPresent()) {
       questionDivMissingCount = 0;
+      
+      // Periodically enforce fullscreen requirement
+      chrome.storage.local.get(['requireFullscreen'], (res) => {
+        if (res.requireFullscreen !== false && !document.fullscreenElement && !document.getElementById('prodigy-lockout-overlay')) {
+          showFullscreenRequiredModal();
+        } else if (document.fullscreenElement) {
+          hideFullscreenRequiredModal();
+        }
+      });
     } else {
       questionDivMissingCount++;
       if (questionDivMissingCount >= 3) {
