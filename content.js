@@ -777,7 +777,7 @@ function forceHideAllIndicators() {
   // Notify server that indicators are cleared
   const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
   const username = getStudentName();
-  fetch(`${origin}/api/session-status`, {
+  safeFetch(`${origin}/api/session-status`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, status: 'Idle' })
@@ -1758,12 +1758,11 @@ function showPreflightCheckModal(onSuccess) {
             const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
             const username = getStudentName();
             
-            fetch(`${origin}/api/unlock-request`, {
+            safeFetch(`${origin}/api/unlock-request`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ username })
             })
-            .then(res => res.json())
             .then(() => {
               preflightRequestBtn.disabled = true;
               preflightRequestBtn.textContent = 'Unlock Requested';
@@ -1790,8 +1789,7 @@ function showPreflightCheckModal(onSuccess) {
             const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
             const username = getStudentName();
             preflightPollInterval = setInterval(() => {
-              fetch(`${origin}/api/check-lockout?username=${encodeURIComponent(username)}`)
-                .then(res => res.json())
+              safeFetch(`${origin}/api/check-lockout?username=${encodeURIComponent(username)}`)
                 .then(data => {
                   if (!data.isBlocked) {
                     clearInterval(preflightPollInterval);
