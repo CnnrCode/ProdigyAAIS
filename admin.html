@@ -306,7 +306,11 @@
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <h2 style="font-size: 16px; color: #ffffff; margin: 0; font-weight: 600;">🏆 Hall of Fame of Rule Breakers (Persistent History)</h2>
-        <button id="clear-all-fame-btn" class="btn" style="width: auto !important; padding: 4px 10px !important; background: #e11d48 !important; border-color: #be123c !important; font-size: 11px !important;" onclick="clearAllHallOfFame()">Clear All Records</button>
+        <div style="display: flex; gap: 8px;">
+          <button id="export-csv-btn" class="btn" style="width: auto !important; padding: 4px 10px !important; background: #0284c7 !important; border-color: #0369a1 !important; font-size: 11px !important;" onclick="exportToCSV()">Export CSV</button>
+          <button id="export-json-btn" class="btn" style="width: auto !important; padding: 4px 10px !important; background: #0f766e !important; border-color: #115e59 !important; font-size: 11px !important;" onclick="exportToJSON()">Export JSON</button>
+          <button id="clear-all-fame-btn" class="btn" style="width: auto !important; padding: 4px 10px !important; background: #e11d48 !important; border-color: #be123c !important; font-size: 11px !important;" onclick="clearAllHallOfFame()">Clear All Records</button>
+        </div>
       </div>
       <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
         <thead>
@@ -333,7 +337,11 @@
     <div style="background: #1e1e1e; border: 1px solid #3c3c3c; border-radius: 8px; width: 600px; max-width: 90%; padding: 24px; color: #cccccc; display: flex; flex-direction: column; max-height: 80vh;">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2d2d2d; padding-bottom: 12px; margin-bottom: 16px;">
         <h3 id="modal-title" style="margin: 0; color: #ffffff; font-size: 16px;">Student Violation History</h3>
-        <button onclick="closeHistoryModal()" style="background: none; border: none; color: #858585; cursor: pointer; font-size: 20px; font-weight: bold; line-height: 1;">&times;</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button id="export-student-csv-btn" class="btn" style="width: auto !important; padding: 4px 8px !important; background: #0284c7 !important; border-color: #0369a1 !important; font-size: 11px !important; margin: 0 !important;" onclick="exportStudentCSV()">Export CSV</button>
+          <button id="export-student-json-btn" class="btn" style="width: auto !important; padding: 4px 8px !important; background: #0f766e !important; border-color: #115e59 !important; font-size: 11px !important; margin: 0 !important;" onclick="exportStudentJSON()">Export JSON</button>
+          <button onclick="closeHistoryModal()" style="background: none; border: none; color: #858585; cursor: pointer; font-size: 20px; font-weight: bold; line-height: 1; margin-left: 8px;">&times;</button>
+        </div>
       </div>
       <div id="modal-content" style="overflow-y: auto; flex-grow: 1; padding-right: 8px;">
         <!-- Timeline events go here -->
@@ -551,7 +559,10 @@
         .catch(err => console.error('Error fetching hall of fame:', err));
     }
 
+    let activeModalUsername = null;
+
     window.viewHistory = function(username) {
+      activeModalUsername = username;
       const record = fameData.find(r => r.username === username);
       if (!record) return;
 
@@ -621,6 +632,91 @@
         fetchHallOfFame();
       })
       .catch(err => showStatus('Failed to clear Hall of Fame.', true));
+    };
+
+    window.exportToCSV = function() {
+      if (!fameData || fameData.length === 0) {
+        alert('No data available to export.');
+        return;
+      }
+      
+      let csvRows = ["Student Name,Cumulative Flags,Cumulative Lockouts,Event Type,Event Detail,Event Timestamp"];
+      
+      fameData.forEach(record => {
+        if (!record.history || record.history.length === 0) {
+          csvRows.push(`"${record.username.replace(/"/g, '""')}",${record.cumulativeFlags || 0},${record.cumulativeLocks || 0},"N/A","No history recorded","${new Date(record.lastActive).toISOString()}"`);
+        } else {
+          record.history.forEach(event => {
+            csvRows.push(`"${record.username.replace(/"/g, '""')}",${record.cumulativeFlags || 0},${record.cumulativeLocks || 0},"${event.type}","${event.detail.replace(/"/g, '""')}","${new Date(event.timestamp).toISOString()}"`);
+          });
+        }
+      });
+      
+      const csvString = csvRows.join("\n");
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `prodigy_shield_violation_report_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    window.exportToJSON = function() {
+      if (!fameData || fameData.length === 0) {
+        alert('No data available to export.');
+        return;
+      }
+      
+      const jsonString = JSON.stringify(fameData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `prodigy_shield_violation_report_${Date.now()}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    window.exportStudentCSV = function() {
+      if (!activeModalUsername) return;
+      const record = fameData.find(r => r.username === activeModalUsername);
+      if (!record) return;
+      
+      let csvRows = ["Event Type,Event Detail,Event Timestamp"];
+      if (record.history) {
+        record.history.forEach(event => {
+          csvRows.push(`"${event.type}","${event.detail.replace(/"/g, '""')}","${new Date(event.timestamp).toISOString()}"`);
+        });
+      }
+      
+      const csvString = csvRows.join("\n");
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${activeModalUsername.replace(/[^a-z0-9]/gi, '_')}_violation_report_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    window.exportStudentJSON = function() {
+      if (!activeModalUsername) return;
+      const record = fameData.find(r => r.username === activeModalUsername);
+      if (!record) return;
+      
+      const jsonString = JSON.stringify(record, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${activeModalUsername.replace(/[^a-z0-9]/gi, '_')}_violation_report_${Date.now()}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     };
 
     // Close modal if clicked outside content
