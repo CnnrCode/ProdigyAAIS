@@ -649,12 +649,12 @@ body:has(#prodigy-refresh-prompt) {
   position: fixed !important;
   bottom: 24px !important;
   right: 24px !important;
-  width: 50px !important;
-  height: 50px !important;
+  width: 44px !important;
+  height: 44px !important;
   border-radius: 50% !important;
-  background: #6366f1 !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3) !important;
+  background: #ffffff !important;
+  color: #3b82f6 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
@@ -665,7 +665,7 @@ body:has(#prodigy-refresh-prompt) {
 
 .prodigy-chat-launcher:hover {
   transform: scale(1.08) !important;
-  background: #4f46e5 !important;
+  background: #fcfcfc !important;
 }
 
 /* ─── Highlight Selection Tooltip Popover ────────────────────────────────── */
@@ -896,4 +896,61 @@ body:has(#prodigy-refresh-prompt) {
 @keyframes prodigy-health-blink {
   0% { opacity: 0.6; }
   100% { opacity: 1; }
+}
+
+/* ─── Prodigy Cloud Logo SVGs ────────────────────────────────────────────── */
+.prodigy-chat-launcher-logo-wrap {
+  width: 26px !important;
+  height: 26px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.prodigy-chat-launcher-logo-svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ─── Draggable Lockout Clock Widget ─────────────────────────────────────── */
+.prodigy-lockout-clock-widget {
+  position: fixed !important;
+  top: 40px !important;
+  right: 40px !important;
+  width: 90px !important;
+  height: 90px !important;
+  border-radius: 50% !important;
+  background: #1e1e1e !important;
+  border: 2px solid #e11d48 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.prodigy-lockout-clock-handle {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  cursor: move !important;
+}
+
+.prodigy-lockout-clock-icon {
+  width: 22px !important;
+  height: 22px !important;
+  color: #e11d48 !important;
+  margin-bottom: 4px !important;
+}
+
+.prodigy-lockout-clock-time {
+  font-family: Consolas, monospace !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
 }

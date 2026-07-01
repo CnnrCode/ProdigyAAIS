@@ -1173,6 +1173,21 @@ function showLockoutOverlay(violationsCount, duration) {
   `;
   document.body.appendChild(lockoutEl);
 
+  // Injected draggable clock widget when locked out
+  const clockEl = document.createElement('div');
+  clockEl.id = 'prodigy-lockout-clock-widget';
+  clockEl.className = 'prodigy-lockout-clock-widget';
+  clockEl.innerHTML = `
+    <div class="prodigy-lockout-clock-handle">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="prodigy-lockout-clock-icon">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+      <div class="prodigy-lockout-clock-time" id="prodigy-lockout-clock-time">${lockoutDuration}</div>
+    </div>
+  `;
+  document.body.appendChild(clockEl);
+  makeDraggable(clockEl, clockEl.querySelector('.prodigy-lockout-clock-handle'));
+
   let currentTipIndex = 0;
   const tipContentEl = lockoutEl.querySelector('#prodigy-lockout-tip-content');
   const nextTipBtn = lockoutEl.querySelector('#prodigy-lockout-tip-next');
@@ -1220,8 +1235,12 @@ function showLockoutOverlay(violationsCount, duration) {
     remaining--;
     if (timerEl) timerEl.textContent = remaining;
 
+    const clockTimeEl = document.getElementById('prodigy-lockout-clock-time');
+    if (clockTimeEl) clockTimeEl.textContent = remaining;
+
     if (remaining <= 0) {
       clearInterval(countdown);
+      if (clockEl) safeRemoveElement(clockEl);
       const countdownWrap = lockoutEl.querySelector('.prodigy-lockout-countdown-wrap');
       const requestWrap = lockoutEl.querySelector('#prodigy-lockout-request-wrap');
       if (requestWrap) requestWrap.remove(); // Remove unlock request when countdown finishes
@@ -1239,6 +1258,10 @@ function showLockoutOverlay(violationsCount, duration) {
             if (lockoutPollInterval) clearInterval(lockoutPollInterval);
             chrome.storage.local.set({ lockoutExpiry: 0 });
             clearInterval(tipRotationInterval);
+            
+            const activeClock = document.getElementById('prodigy-lockout-clock-widget');
+            if (activeClock) safeRemoveElement(activeClock);
+            
             safeRemoveElement(lockoutEl);
 
             // Only enter fullscreen if we are actually still on the exam question page.
@@ -1266,6 +1289,9 @@ function showLockoutOverlay(violationsCount, duration) {
           clearInterval(tipRotationInterval);
           
           chrome.storage.local.set({ lockoutExpiry: 0 });
+          
+          const activeClock = document.getElementById('prodigy-lockout-clock-widget');
+          if (activeClock) safeRemoveElement(activeClock);
           
           if (lockoutEl && document.body.contains(lockoutEl)) {
             safeRemoveElement(lockoutEl);
@@ -1900,9 +1926,12 @@ function initChatbot(isExamActive = false) {
   chatLauncher.id = 'prodigy-chat-launcher';
   chatLauncher.className = 'prodigy-chat-launcher';
   chatLauncher.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width:24px; height:24px;">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.19.195.288.455.247.72l-.517 3.072a.75.75 0 001.085.748l3.11-1.586a.748.748 0 01.696-.05c1.015.315 2.1.486 3.096.486z" />
-    </svg>
+    <div class="prodigy-chat-launcher-logo-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="prodigy-chat-launcher-logo-svg">
+        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="#3b82f6" />
+        <text x="12" y="15" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-weight="900" font-size="9" text-anchor="middle" dominant-baseline="middle">P</text>
+      </svg>
+    </div>
   `;
   document.body.appendChild(chatLauncher);
 
@@ -1950,21 +1979,61 @@ function initChatbot(isExamActive = false) {
 
 function makeDraggable(element, handle) {
   let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-  handle.onmousedown = dragMouseDown;
+  let hasDragged = false;
+  let startX = 0, startY = 0;
+
+  const dragHandle = handle || element;
+
+  dragHandle.addEventListener('mousedown', dragMouseDown);
+  dragHandle.addEventListener('touchstart', dragTouchStart, { passive: false });
+
+  // Add click interceptor to suppress click if we dragged
+  element.addEventListener('click', (e) => {
+    if (hasDragged) {
+      e.preventDefault();
+      e.stopPropagation();
+      hasDragged = false;
+    }
+  }, true);
 
   function dragMouseDown(e) {
     e = e || window.event;
-    if (e.target.closest('.prodigy-chat-close-btn')) return;
+    if (e.target.closest('.prodigy-chat-close-btn') || e.target.closest('button, input, textarea')) return;
+    
+    startX = e.clientX;
+    startY = e.clientY;
+    hasDragged = false;
+    
     e.preventDefault();
     pos3 = e.clientX;
     pos4 = e.clientY;
-    document.onmouseup = closeDragElement;
-    document.onmousemove = elementDrag;
+    
+    document.addEventListener('mouseup', closeDragElement);
+    document.addEventListener('mousemove', elementDrag);
+  }
+
+  function dragTouchStart(e) {
+    if (e.target.closest('.prodigy-chat-close-btn') || e.target.closest('button, input, textarea')) return;
+    
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    hasDragged = false;
+    
+    pos3 = e.touches[0].clientX;
+    pos4 = e.touches[0].clientY;
+    
+    document.addEventListener('touchend', closeDragElement);
+    document.addEventListener('touchmove', elementTouchDrag, { passive: false });
   }
 
   function elementDrag(e) {
     e = e || window.event;
     e.preventDefault();
+    
+    if (Math.abs(e.clientX - startX) > 4 || Math.abs(e.clientY - startY) > 4) {
+      hasDragged = true;
+    }
+    
     pos1 = pos3 - e.clientX;
     pos2 = pos4 - e.clientY;
     pos3 = e.clientX;
@@ -1976,15 +2045,45 @@ function makeDraggable(element, handle) {
     const maxTop = window.innerHeight - element.offsetHeight;
     const maxLeft = window.innerWidth - element.offsetWidth;
     
-    element.style.top = Math.max(0, Math.min(topPos, maxTop)) + "px";
-    element.style.left = Math.max(0, Math.min(leftPos, maxLeft)) + "px";
+    element.style.top = Math.max(10, Math.min(topPos, maxTop - 10)) + "px";
+    element.style.left = Math.max(10, Math.min(leftPos, maxLeft - 10)) + "px";
+    element.style.bottom = "auto";
+    element.style.right = "auto";
+  }
+
+  function elementTouchDrag(e) {
+    e.preventDefault();
+    
+    if (Math.abs(e.touches[0].clientX - startX) > 4 || Math.abs(e.touches[0].clientY - startY) > 4) {
+      hasDragged = true;
+    }
+    
+    pos1 = pos3 - e.touches[0].clientX;
+    pos2 = pos4 - e.touches[0].clientY;
+    pos3 = e.touches[0].clientX;
+    pos4 = e.touches[0].clientY;
+    
+    const topPos = element.offsetTop - pos2;
+    const leftPos = element.offsetLeft - pos1;
+    
+    const maxTop = window.innerHeight - element.offsetHeight;
+    const maxLeft = window.innerWidth - element.offsetWidth;
+    
+    element.style.top = Math.max(10, Math.min(topPos, maxTop - 10)) + "px";
+    element.style.left = Math.max(10, Math.min(leftPos, maxLeft - 10)) + "px";
     element.style.bottom = "auto";
     element.style.right = "auto";
   }
 
   function closeDragElement() {
-    document.onmouseup = null;
-    document.onmousemove = null;
+    document.removeEventListener('mouseup', closeDragElement);
+    document.removeEventListener('mousemove', elementDrag);
+    document.removeEventListener('touchend', closeDragElement);
+    document.removeEventListener('touchmove', elementTouchDrag);
+    
+    setTimeout(() => {
+      hasDragged = false;
+    }, 50);
   }
 }
 
@@ -2131,6 +2230,9 @@ function handleUserMsgSend() {
 function setupChatbotListeners() {
   const header = document.getElementById('prodigy-chat-header');
   makeDraggable(chatWidget, header);
+  if (chatLauncher) {
+    makeDraggable(chatLauncher, chatLauncher);
+  }
 
   const closeBtn = document.getElementById('prodigy-chat-close-btn');
   if (closeBtn) {
