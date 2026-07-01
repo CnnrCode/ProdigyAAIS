@@ -1,0 +1,12 @@
+{
+  "milestoneInterval": 5,
+  "baseDurationSeconds": 60,
+  "copyPasteAction": "toast",
+  "strictLockout": false,
+  "noRestrictions": false,
+  "chatbotDuringExam": false,
+  "requireFullscreen": true,
+  "blockDevTools": true,
+  "blockTabSwitch": true,
+  "blockRightClick": true
+}

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prodigy Review - Diagnostic Exam Simulation</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-6">
+  <div class="max-w-2xl w-full bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl p-8 flex flex-col gap-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-6 border-b border-slate-700">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Diagnostic Exam Portal</h1>
+        <p class="text-sm text-slate-400 mt-1">Simulation environment for testing Prodigy Shield anti-cheat system.</p>
+      </div>
+      <div class="px-3 py-1.5 bg-slate-700 text-xs font-semibold rounded-full text-slate-300">
+        Simulated Environment
+      </div>
+    </div>
+
+    <!-- Exam Info Card -->
+    <div class="bg-slate-900/50 rounded-xl p-6 border border-slate-700/50 flex flex-col gap-4">
+      <h2 class="text-lg font-semibold text-white">Exam Guidelines & Instructions</h2>
+      <ul class="list-disc list-inside text-sm text-slate-300 space-y-2">
+        <li>Once started, the exam will force your browser into <strong>fullscreen mode</strong>.</li>
+        <li>You are <strong>restricted from changing tabs</strong> or applications (Alt+Tab).</li>
+        <li>Any attempt to lose window focus, switch tabs, or exit fullscreen will be logged as an <strong>integrity violation</strong>.</li>
+        <li>The restriction remains active until you submit the exam.</li>
+      </ul>
+    </div>
+
+    <!-- Start Button Container -->
+    <div id="start-section" class="flex flex-col gap-4">
+      <div class="border border-slate-700 bg-slate-900/30 p-4 rounded-xl flex flex-col gap-2">
+        <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">Test Button (Should NOT lock exam):</span>
+        <button id="false-start-btn" class="w-full py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play w-4 h-4"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>Start Diagnostic
+        </button>
+      </div>
+
+      <div class="border border-slate-700 bg-slate-900/30 p-4 rounded-xl flex flex-col gap-2">
+        <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Real Start Button (Should lock exam):</span>
+        <button id="start-btn" class="w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold text-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
+          Start Diagnostic Exam
+        </button>
+      </div>
+      <p class="text-xs text-center text-slate-500">Clicking the real button triggers strict exam security settings.</p>
+    </div>
+
+    <!-- Exam Content (Hidden until started) -->
+    <div id="exam-section" class="hidden flex flex-col gap-6">
+      <div class="flex justify-between items-center">
+        <button id="exit-btn" class="flex items-center gap-2 text-slate-400 hover:text-slate-200 text-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left w-4 h-4"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg> Exit
+        </button>
+        <span class="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Exam Status: Locked</span>
+      </div>
+
+      <div class="bg-indigo-950/20 rounded-xl p-6 border border-indigo-900/40">
+        <h3 class="font-medium text-indigo-300 text-sm uppercase tracking-wider mb-2">Question 1 of 5</h3>
+        <p class="text-white font-medium mb-4">Under ideal conditions, how does a standard anti-cheat web extension restrict the active tab switching behavior of a candidate?</p>
+        <div class="space-y-2.5">
+          <label class="flex items-center gap-3 p-3 bg-slate-900 rounded-lg border border-slate-700 hover:border-slate-600 cursor-pointer transition-all">
+            <input type="radio" name="q1" class="text-blue-500 focus:ring-0">
+            <span class="text-sm">By utilizing the `chrome.tabs.onActivated` API to force active focus back to the exam tab.</span>
+          </label>
+          <label class="flex items-center gap-3 p-3 bg-slate-900 rounded-lg border border-slate-700 hover:border-slate-600 cursor-pointer transition-all">
+            <input type="radio" name="q1" class="text-blue-500 focus:ring-0">
+            <span class="text-sm">By closing any other open tabs immediately when they are clicked.</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <!-- Submit Button -->
+        <button id="submit-btn" class="w-full mt-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50">
+          Submit Exam
+        </button>
+        <p class="text-xs text-center text-slate-500">Clicking Submit exits the locked exam workspace.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Visual toggles for exam simulation state
+    const startBtn = document.getElementById('start-btn');
+    const falseStartBtn = document.getElementById('false-start-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const exitBtn = document.getElementById('exit-btn');
+    const startSection = document.getElementById('start-section');
+    const examSection = document.getElementById('exam-section');
+
+    startBtn.addEventListener('click', () => {
+      startSection.classList.add('hidden');
+      examSection.classList.remove('hidden');
+    });
+
+    falseStartBtn.addEventListener('click', () => {
+      startSection.classList.add('hidden');
+      examSection.classList.remove('hidden');
+    });
+
+    const resetExamState = () => {
+      examSection.classList.add('hidden');
+      startSection.classList.remove('hidden');
+      // Reset radio inputs
+      document.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
+    };
+
+    submitBtn.addEventListener('click', resetExamState);
+    exitBtn.addEventListener('click', resetExamState);
+  </script>
+</body>
+</html>

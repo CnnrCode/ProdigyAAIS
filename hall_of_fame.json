@@ -1,0 +1,358 @@
+{
+  "Pablo Escultor (Brave)": {
+    "username": "Pablo Escultor (Brave)",
+    "cumulativeFlags": 38,
+    "cumulativeLocks": 9,
+    "lastActive": "2026-07-01T01:54:22.095Z",
+    "history": [
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or click away)",
+        "timestamp": "2026-07-01T01:11:28.819Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tab visibility hidden (Switched tab or minimized)",
+        "timestamp": "2026-07-01T01:11:28.925Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:08.543Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 180 seconds",
+        "timestamp": "2026-07-01T01:14:08.550Z"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Requested administrator unlock",
+        "timestamp": "2026-07-01T01:14:11.434Z"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-01T01:14:22.754Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:29.943Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Fullscreen exited manually",
+        "timestamp": "2026-07-01T01:14:33.032Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:36.135Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:36.286Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:36.430Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 240 seconds",
+        "timestamp": "2026-07-01T01:14:36.435Z"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Requested administrator unlock",
+        "timestamp": "2026-07-01T01:14:37.819Z"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-01T01:14:40.634Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:45.718Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Fullscreen exited manually",
+        "timestamp": "2026-07-01T01:14:45.759Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:46.439Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:49.294Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12)",
+        "timestamp": "2026-07-01T01:14:49.438Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 300 seconds",
+        "timestamp": "2026-07-01T01:14:49.443Z"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Requested administrator unlock",
+        "timestamp": "2026-07-01T01:14:50.682Z"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-01T01:15:14.685Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or click away)",
+        "timestamp": "2026-07-01T01:15:55.234Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Fullscreen exited manually",
+        "timestamp": "2026-07-01T01:16:02.245Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Fullscreen exited manually",
+        "timestamp": "2026-07-01T01:16:04.836Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Fullscreen exited manually",
+        "timestamp": "2026-07-01T01:16:05.885Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Fullscreen exited manually",
+        "timestamp": "2026-07-01T01:16:06.477Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 360 seconds",
+        "timestamp": "2026-07-01T01:16:06.488Z"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-01T01:40:37.668Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:39.242Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:40.634Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:41.450Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 420 seconds",
+        "timestamp": "2026-07-01T01:40:41.460Z"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Requested administrator unlock",
+        "timestamp": "2026-07-01T01:40:41.666Z"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-01T01:40:47.697Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Removed proctor element: #prodigy-lockout-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:47.816Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-fullscreen-required-overlay [Medium] (+2)",
+        "timestamp": "2026-07-01T01:40:49.349Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:50.282Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:51.482Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 480 seconds",
+        "timestamp": "2026-07-01T01:40:51.489Z"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Requested administrator unlock",
+        "timestamp": "2026-07-01T01:40:53.490Z"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-01T01:40:56.610Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Removed proctor element: #prodigy-lockout-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:57.544Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-fullscreen-required-overlay [Medium] (+2)",
+        "timestamp": "2026-07-01T01:40:58.179Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:58.738Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:40:58.914Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 540 seconds",
+        "timestamp": "2026-07-01T01:40:58.925Z"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Requested administrator unlock",
+        "timestamp": "2026-07-01T01:40:59.675Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or system interaction detected) [High] (+5)",
+        "timestamp": "2026-07-01T01:51:07.628Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tab change detected [High] (+5)",
+        "timestamp": "2026-07-01T01:51:07.629Z"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-01T01:52:36.900Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Removed proctor element: #prodigy-lockout-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:52:37.402Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-fullscreen-required-overlay [Medium] (+2)",
+        "timestamp": "2026-07-01T01:52:38.150Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:52:38.706Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
+        "timestamp": "2026-07-01T01:52:39.369Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 660 seconds",
+        "timestamp": "2026-07-01T01:52:39.384Z"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-01T01:52:56.085Z"
+      },
+      {
+        "type": "submit",
+        "detail": "Exam session ended / submitted",
+        "timestamp": "2026-07-01T01:52:57.421Z"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-01T01:53:10.779Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or click away) [High] (+5)",
+        "timestamp": "2026-07-01T01:53:16.090Z"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-01T01:53:16.095Z"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Requested administrator unlock",
+        "timestamp": "2026-07-01T01:53:19.295Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or system interaction detected) [High] (+5)",
+        "timestamp": "2026-07-01T01:54:22.094Z"
+      },
+      {
+        "type": "violation",
+        "detail": "Tab change detected [High] (+5)",
+        "timestamp": "2026-07-01T01:54:22.095Z"
+      }
+    ]
+  },
+  "Zen Student (Brave)": {
+    "username": "Zen Student (Brave)",
+    "cumulativeFlags": 0,
+    "cumulativeLocks": 1,
+    "lastActive": "2026-07-01T01:52:56.820Z",
+    "history": [
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 651 seconds",
+        "timestamp": "2026-07-01T01:52:48.960Z"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-01T01:52:48.962Z"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Requested administrator unlock",
+        "timestamp": "2026-07-01T01:52:50.402Z"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-01T01:52:56.820Z"
+      }
+    ]
+  }
+}

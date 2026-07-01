@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Prodigy Shield | Admin Control Panel</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #181818;
+      color: #cccccc;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .header {
+      border-bottom: 1px solid #2d2d2d;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #ffffff;
+      margin: 0;
+    }
+    .version {
+      font-size: 11px;
+      font-family: monospace;
+      color: #858585;
+      background: #252526;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #2d2d2d;
+    }
+    .card {
+      background: #1e1e1e;
+      border: 1px solid #2d2d2d;
+      border-radius: 6px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .field {
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #858585;
+    }
+    input, select {
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      color: #ffffff;
+      padding: 10px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: Consolas, monospace;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    input:focus, select:focus {
+      border-color: #0e639c;
+    }
+    .description {
+      font-size: 12px;
+      color: #858585;
+      line-height: 1.5;
+    }
+    .btn {
+      background: #0e639c;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      transition: background 0.15s ease;
+      outline: none;
+    }
+    .btn:hover {
+      background: #1177bb;
+    }
+    .status-msg {
+      margin-top: 16px;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+      font-family: Consolas, monospace;
+    }
+    .status-success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+    .status-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+    
+    /* Proctor badges */
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-active {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+    .badge-locked {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .badge-idle {
+      background: rgba(133, 133, 133, 0.1);
+      color: #858585;
+      border: 1px solid rgba(133, 133, 133, 0.2);
+    }
+    .badge-request {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      animation: pulse-glow 1.5s infinite;
+    }
+    
+    @keyframes pulse-glow {
+      0% { opacity: 0.7; }
+      50% { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+
+    /* History Timeline styles */
+    .timeline-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #2d2d2d;
+    }
+    .timeline-badge {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 3px;
+      min-width: 90px;
+      text-align: center;
+      align-self: flex-start;
+    }
+    .timeline-badge-violation { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .timeline-badge-lockout { background: rgba(244,63,94,0.2); color: #f43f5e; border: 1px solid rgba(244,63,94,0.3); }
+    .timeline-badge-unlock { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .timeline-badge-unlock_request { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .timeline-badge-start { background: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .timeline-badge-submit { background: rgba(107,114,128,0.2); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+    .timeline-time { font-family: monospace; font-size: 11px; color: #858585; min-width: 140px; margin-top: 2px; }
+    .timeline-detail { font-size: 12px; color: #ffffff; flex-grow: 1; margin-top: 1px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Prodigy Shield Control Center</h1>
+      <span class="version">v1.3 REMOTE-CONFIG</span>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label for="milestone">Suspension Milestone (Flags)</label>
+        <input type="number" id="milestone" min="1" max="50">
+        <div class="description">Every N flags will trigger a lockout suspension. (e.g. 5 flags)</div>
+      </div>
+
+      <div class="field">
+        <label for="duration">Base Suspension Duration (Seconds)</label>
+        <input type="number" id="duration" min="1" max="300">
+        <div class="description">How many seconds to suspend on the first milestone. Multiplied on subsequent milestones (e.g. 5 flags = 10s, 10 flags = 20s).</div>
+      </div>
+
+      <div class="field">
+        <label for="copypaste">Copy/Paste Security Action</label>
+        <select id="copypaste">
+          <option value="flag">Flag as Violation (Strict)</option>
+          <option value="toast">Warning Toast Only (Muted)</option>
+          <option value="allow">Allow Copy/Paste (Off)</option>
+        </select>
+        <div class="description">Select what happens when a student copies or pastes. "Warning Toast Only" alerts the user but does not increment flags.</div>
+      </div>
+
+      <!-- Strict Mode Toggle -->
+      <div class="field">
+        <label for="strictlockout">No Cooldown on Lockdown (Strict Mode)</label>
+        <select id="strictlockout">
+          <option value="false">Disabled (Milestone based lockout)</option>
+          <option value="true">Enabled (Lockout on every violation after first milestone)</option>
+        </select>
+        <div class="description">Disable the warning-only grace period. Every violation after the first milestone immediately triggers a new lockout suspension.</div>
+      </div>
+
+      <!-- No Restrictions Toggle -->
+      <div class="field">
+        <label for="norestrictions">No Restrictions Mode</label>
+        <select id="norestrictions">
+          <option value="false">Disabled (Enforce all anti-cheat rules)</option>
+          <option value="true">Enabled (Bypass all active anti-cheat restrictions)</option>
+        </select>
+        <div class="description">If enabled, the proctor session remains active in logs but restrictions are not enforced on the client.</div>
+      </div>
+
+      <!-- Floating Socratic AI Toggle -->
+      <div class="field">
+        <label for="chatbotduringexam">Floating Socratic AI during Exam</label>
+        <select id="chatbotduringexam">
+          <option value="false">Off (Hidden during exam)</option>
+          <option value="true">On (Available during exam)</option>
+        </select>
+        <div class="description">Toggle whether the Socratic AI Tutor widget is available during active exam sessions.</div>
+      </div>
+
+      <!-- Fullscreen Toggle -->
+      <div class="field">
+        <label for="requirefullscreen">Require Fullscreen</label>
+        <select id="requirefullscreen">
+          <option value="true">Yes (Enforce fullscreen, flag exits)</option>
+          <option value="false">No (Allow windowed mode)</option>
+        </select>
+        <div class="description">Toggle fullscreen requirement and manual exit flagging.</div>
+      </div>
+
+      <!-- Block DevTools Toggle -->
+      <div class="field">
+        <label for="blockdevtools">Block Developer Tools</label>
+        <select id="blockdevtools">
+          <option value="true">Yes (Flag DevTools or split-screen size mismatches)</option>
+          <option value="false">No (Allow DevTools)</option>
+        </select>
+        <div class="description">Toggle checking and flagging of developer tools or split-screen.</div>
+      </div>
+
+      <!-- Block Tab Switch Toggle -->
+      <div class="field">
+        <label for="blocktabswitch">Block Tab Switching & Focus Loss</label>
+        <select id="blocktabswitch">
+          <option value="true">Yes (Switch back to exam tab and flag focus loss)</option>
+          <option value="false">No (Allow tab switching and background runs)</option>
+        </select>
+        <div class="description">Toggle tab change locking and window blur detection.</div>
+      </div>
+
+      <!-- Block Context Menu Toggle -->
+      <div class="field">
+        <label for="blockrightclick">Block Right Click (Context Menu)</label>
+        <select id="blockrightclick">
+          <option value="true">Yes (Disable context menu on exam page)</option>
+          <option value="false">No (Allow context menu)</option>
+        </select>
+        <div class="description">Toggle right-click blocking during the exam.</div>
+      </div>
+
+      <button id="save-btn" class="btn">Apply Global Configuration</button>
+      <div id="status" class="status-msg"></div>
+    </div>
+
+    <!-- Active Sessions and Lockouts Table -->
+    <div class="card">
+      <h2 style="font-size: 16px; color: #ffffff; margin-top: 0; margin-bottom: 16px; font-weight: 600;">Active Proctor Sessions & Lockouts</h2>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid #2d2d2d; color: #858585;">
+            <th style="padding: 10px 8px;">Student Name</th>
+            <th style="padding: 10px 8px;">Proctor Status</th>
+            <th style="padding: 10px 8px; text-align: center;">Flags (Violations)</th>
+            <th style="padding: 10px 8px; text-align: center;">Locks (Lockouts)</th>
+            <th style="padding: 10px 8px;">Unlock Request</th>
+            <th style="padding: 10px 8px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="sessions-table-body">
+          <tr>
+            <td colspan="6" style="padding: 16px 8px; text-align: center; color: #858585;">Loading sessions...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Hall of Fame of Rule Breakers (Persistent History) -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="font-size: 16px; color: #ffffff; margin: 0; font-weight: 600;">🏆 Hall of Fame of Rule Breakers (Persistent History)</h2>
+        <button id="clear-all-fame-btn" class="btn" style="width: auto !important; padding: 4px 10px !important; background: #e11d48 !important; border-color: #be123c !important; font-size: 11px !important;" onclick="clearAllHallOfFame()">Clear All Records</button>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid #2d2d2d; color: #858585;">
+            <th style="padding: 10px 8px;">Student Name</th>
+            <th style="padding: 10px 8px; text-align: center;">Total Flags</th>
+            <th style="padding: 10px 8px; text-align: center;">Total Lockouts</th>
+            <th style="padding: 10px 8px;">Latest Event</th>
+            <th style="padding: 10px 8px;">Last Active</th>
+            <th style="padding: 10px 8px; text-align: center;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="fame-table-body">
+          <tr>
+            <td colspan="6" style="padding: 16px 8px; text-align: center; color: #858585;">Loading hall of fame...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div id="history-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: #1e1e1e; border: 1px solid #3c3c3c; border-radius: 8px; width: 600px; max-width: 90%; padding: 24px; color: #cccccc; display: flex; flex-direction: column; max-height: 80vh;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2d2d2d; padding-bottom: 12px; margin-bottom: 16px;">
+        <h3 id="modal-title" style="margin: 0; color: #ffffff; font-size: 16px;">Student Violation History</h3>
+        <button onclick="closeHistoryModal()" style="background: none; border: none; color: #858585; cursor: pointer; font-size: 20px; font-weight: bold; line-height: 1;">&times;</button>
+      </div>
+      <div id="modal-content" style="overflow-y: auto; flex-grow: 1; padding-right: 8px;">
+        <!-- Timeline events go here -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const milestoneInput = document.getElementById('milestone');
+    const durationInput = document.getElementById('duration');
+    const copypasteSelect = document.getElementById('copypaste');
+    const strictLockoutSelect = document.getElementById('strictlockout');
+    const noRestrictionsSelect = document.getElementById('norestrictions');
+    const chatbotDuringExamSelect = document.getElementById('chatbotduringexam');
+    const requireFullscreenSelect = document.getElementById('requirefullscreen');
+    const blockDevToolsSelect = document.getElementById('blockdevtools');
+    const blockTabSwitchSelect = document.getElementById('blocktabswitch');
+    const blockRightClickSelect = document.getElementById('blockrightclick');
+    const saveBtn = document.getElementById('save-btn');
+    const statusMsg = document.getElementById('status');
+
+    function showStatus(text, isError = false) {
+      statusMsg.textContent = text;
+      statusMsg.className = 'status-msg ' + (isError ? 'status-error' : 'status-success');
+      statusMsg.style.display = 'block';
+      setTimeout(() => {
+        statusMsg.style.display = 'none';
+      }, 3000);
+    }
+
+    // Load active settings from server
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => {
+        milestoneInput.value = data.milestoneInterval || 5;
+        durationInput.value = data.baseDurationSeconds || 10;
+        copypasteSelect.value = data.copyPasteAction || 'flag';
+        strictLockoutSelect.value = String(data.strictLockout !== undefined ? data.strictLockout : false);
+        noRestrictionsSelect.value = String(data.noRestrictions !== undefined ? data.noRestrictions : false);
+        chatbotDuringExamSelect.value = String(data.chatbotDuringExam !== undefined ? data.chatbotDuringExam : false);
+        requireFullscreenSelect.value = String(data.requireFullscreen !== undefined ? data.requireFullscreen : true);
+        blockDevToolsSelect.value = String(data.blockDevTools !== undefined ? data.blockDevTools : true);
+        blockTabSwitchSelect.value = String(data.blockTabSwitch !== undefined ? data.blockTabSwitch : true);
+        blockRightClickSelect.value = String(data.blockRightClick !== undefined ? data.blockRightClick : true);
+      })
+      .catch(err => {
+        console.error('Error fetching config:', err);
+        showStatus('Error loading current configuration from server.', true);
+      });
+
+    // Save changes
+    saveBtn.addEventListener('click', () => {
+      const milestone = parseInt(milestoneInput.value, 10);
+      const duration = parseInt(durationInput.value, 10);
+      const copypaste = copypasteSelect.value;
+      const strictlockout = strictLockoutSelect.value === 'true';
+      const norestrictions = noRestrictionsSelect.value === 'true';
+      const chatbotduringexam = chatbotDuringExamSelect.value === 'true';
+      const requirefullscreen = requireFullscreenSelect.value === 'true';
+      const blockdevtools = blockDevToolsSelect.value === 'true';
+      const blocktabswitch = blockTabSwitchSelect.value === 'true';
+      const blockrightclick = blockRightClickSelect.value === 'true';
+
+      if (isNaN(milestone) || milestone < 1 || isNaN(duration) || duration < 1) {
+        showStatus('Please enter valid numbers.', true);
+        return;
+      }
+
+      fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          milestoneInterval: milestone,
+          baseDurationSeconds: duration,
+          copyPasteAction: copypaste,
+          strictLockout: strictlockout,
+          noRestrictions: norestrictions,
+          chatbotDuringExam: chatbotduringexam,
+          requireFullscreen: requirefullscreen,
+          blockDevTools: blockdevtools,
+          blockTabSwitch: blocktabswitch,
+          blockRightClick: blockrightclick
+        })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        showStatus('Configuration saved successfully. All new exam sessions will sync automatically.');
+      })
+      .catch(err => {
+        showStatus('Failed to update config on the server.', true);
+      });
+    });
+
+    // --- Active Proctor Sessions Table Code ---
+    const sessionsBody = document.getElementById('sessions-table-body');
+
+    function fetchSessions() {
+      fetch('/api/blocked-users')
+        .then(res => res.json())
+        .then(data => {
+          sessionsBody.innerHTML = '';
+          if (data.length === 0) {
+            sessionsBody.innerHTML = `
+              <tr>
+                <td colspan="6" style="padding: 16px 8px; text-align: center; color: #858585;">No active proctoring sessions.</td>
+              </tr>
+            `;
+            return;
+          }
+
+          data.forEach(session => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #2d2d2d';
+
+            let statusBadge = '';
+            if (session.status === 'Active Exam') {
+              statusBadge = '<span class="badge badge-active">Active Exam</span>';
+            } else if (session.status === 'Locked Out') {
+              statusBadge = '<span class="badge badge-locked">Locked Out</span>';
+            } else {
+              statusBadge = '<span class="badge badge-idle">Idle</span>';
+            }
+
+            const requestBadge = session.unlockRequested
+              ? '<span class="badge badge-request">Yes (Unlock Requested)</span>'
+              : '<span class="badge badge-idle" style="border:none;">No</span>';
+
+            const actionBtn = (session.isBlocked || session.unlockRequested)
+              ? `<button class="btn btn-unlock" style="width: auto !important; padding: 4px 10px !important; background: #22c55e !important; font-size: 11px !important; margin: 4px 0 !important;" onclick="reactivateUser('${session.username}')">Unlock & Reactivate</button>`
+              : '<span style="color:#858585; font-size:11px;">No Action</span>';
+
+            row.innerHTML = `
+              <td style="padding: 10px 8px; color: #ffffff; font-weight: 500;">${session.username}</td>
+              <td style="padding: 10px 8px;">${statusBadge}</td>
+              <td style="padding: 10px 8px; text-align: center; color: #f87171; font-weight: 600;">${session.flags || 0}</td>
+              <td style="padding: 10px 8px; text-align: center; color: #f43f5e; font-weight: 600;">${session.locks || 0}</td>
+              <td style="padding: 10px 8px;">${requestBadge}</td>
+              <td style="padding: 10px 8px;">${actionBtn}</td>
+            `;
+            sessionsBody.appendChild(row);
+          });
+        })
+        .catch(err => console.error('Error fetching sessions:', err));
+    }
+
+    window.reactivateUser = function(username) {
+      fetch('/api/reactivate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        showStatus(`Reactivated and unlocked user "${username}" successfully.`);
+        fetchSessions();
+        if (typeof fetchHallOfFame === 'function') fetchHallOfFame();
+      })
+      .catch(err => {
+        showStatus('Failed to reactivate user.', true);
+      });
+    };
+
+    // --- Hall of Fame Code ---
+    const fameBody = document.getElementById('fame-table-body');
+    let fameData = [];
+
+    function fetchHallOfFame() {
+      fetch('/api/hall-of-fame')
+        .then(res => res.json())
+        .then(data => {
+          fameData = data;
+          fameBody.innerHTML = '';
+          if (data.length === 0) {
+            fameBody.innerHTML = `
+              <tr>
+                <td colspan="6" style="padding: 16px 8px; text-align: center; color: #858585;">No entries in Hall of Fame.</td>
+              </tr>
+            `;
+            return;
+          }
+
+          data.forEach(record => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #2d2d2d';
+
+            // Find last non-start/submit event for a nicer display if possible, or just the last event
+            const lastEvent = record.history && record.history.length > 0
+              ? record.history[record.history.length - 1]
+              : null;
+            
+            let lastEventStr = 'N/A';
+            if (lastEvent) {
+              const typeLabel = lastEvent.type.toUpperCase();
+              lastEventStr = `[${typeLabel}] ${lastEvent.detail}`;
+            }
+
+            const formattedTime = new Date(record.lastActive).toLocaleString();
+
+            row.innerHTML = `
+              <td style="padding: 10px 8px; color: #ffffff; font-weight: 500;">${record.username}</td>
+              <td style="padding: 10px 8px; text-align: center; color: #f87171; font-weight: 600;">${record.cumulativeFlags || 0}</td>
+              <td style="padding: 10px 8px; text-align: center; color: #f43f5e; font-weight: 600;">${record.cumulativeLocks || 0}</td>
+              <td style="padding: 10px 8px; color: #b3b3b3; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${lastEventStr}</td>
+              <td style="padding: 10px 8px; color: #858585; font-size: 11px;">${formattedTime}</td>
+              <td style="padding: 10px 8px; text-align: center;">
+                <button class="btn" style="width: auto !important; padding: 4px 8px !important; background: #0e639c !important; font-size: 11px !important; margin-right: 4px;" onclick="viewHistory('${record.username}')">Details</button>
+                <button class="btn" style="width: auto !important; padding: 4px 8px !important; background: #e11d48 !important; border-color: #be123c !important; font-size: 11px !important;" onclick="clearRecord('${record.username}')">Clear</button>
+              </td>
+            `;
+            fameBody.appendChild(row);
+          });
+        })
+        .catch(err => console.error('Error fetching hall of fame:', err));
+    }
+
+    window.viewHistory = function(username) {
+      const record = fameData.find(r => r.username === username);
+      if (!record) return;
+
+      document.getElementById('modal-title').textContent = `Violation History for ${username}`;
+      const contentEl = document.getElementById('modal-content');
+      contentEl.innerHTML = '';
+
+      if (!record.history || record.history.length === 0) {
+        contentEl.innerHTML = '<p style="text-align: center; color: #858585; padding: 20px;">No events recorded.</p>';
+      } else {
+        // Reverse history to show latest events first
+        const sortedHistory = [...record.history].reverse();
+        sortedHistory.forEach(event => {
+          const item = document.createElement('div');
+          item.className = 'timeline-item';
+
+          const formattedTime = new Date(event.timestamp).toLocaleString();
+          let badgeClass = 'timeline-badge';
+          if (event.type === 'violation') badgeClass += ' timeline-badge-violation';
+          else if (event.type === 'lockout') badgeClass += ' timeline-badge-lockout';
+          else if (event.type === 'unlock') badgeClass += ' timeline-badge-unlock';
+          else if (event.type === 'unlock_request') badgeClass += ' timeline-badge-unlock_request';
+          else if (event.type === 'start') badgeClass += ' timeline-badge-start';
+          else if (event.type === 'submit') badgeClass += ' timeline-badge-submit';
+
+          item.innerHTML = `
+            <span class="${badgeClass}">${event.type.replace('_', ' ')}</span>
+            <span class="timeline-detail">${event.detail}</span>
+            <span class="timeline-time">${formattedTime}</span>
+          `;
+          contentEl.appendChild(item);
+        });
+      }
+
+      document.getElementById('history-modal').style.display = 'flex';
+    };
+
+    window.closeHistoryModal = function() {
+      document.getElementById('history-modal').style.display = 'none';
+    };
+
+    window.clearRecord = function(username) {
+      if (!confirm(`Are you sure you want to clear violation history for "${username}"?`)) return;
+      fetch('/api/clear-hall-of-fame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        showStatus(`Cleared history for student "${username}".`);
+        fetchHallOfFame();
+      })
+      .catch(err => showStatus('Failed to clear student record.', true));
+    };
+
+    window.clearAllHallOfFame = function() {
+      if (!confirm('Are you sure you want to clear the entire Hall of Fame? This cannot be undone.')) return;
+      fetch('/api/clear-hall-of-fame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        showStatus('Cleared all Hall of Fame records successfully.');
+        fetchHallOfFame();
+      })
+      .catch(err => showStatus('Failed to clear Hall of Fame.', true));
+    };
+
+    // Close modal if clicked outside content
+    window.addEventListener('click', (event) => {
+      const modal = document.getElementById('history-modal');
+      if (modal && event.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+
+    // Run both fetches
+    function fetchAllData() {
+      fetchSessions();
+      fetchHallOfFame();
+    }
+
+    // Initial load and start interval
+    fetchAllData();
+    setInterval(fetchAllData, 2000);
+  </script>
+</body>
+</html>

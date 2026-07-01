@@ -1,0 +1,899 @@
+/* Prevent page scrolling when any overlay/modal is active and visible */
+html:has(#prodigy-lockout-overlay),
+html:has(#prodigy-anti-cheat-overlay:not(.prodigy-hidden)),
+html:has(#prodigy-fullscreen-required-overlay:not(.prodigy-hidden)),
+html:has(#prodigy-refresh-prompt),
+body:has(#prodigy-lockout-overlay),
+body:has(#prodigy-anti-cheat-overlay:not(.prodigy-hidden)),
+body:has(#prodigy-fullscreen-required-overlay:not(.prodigy-hidden)),
+body:has(#prodigy-refresh-prompt) {
+  overflow: hidden !important;
+}
+
+/* Injected Prodigy Shield Overlay Style */
+.prodigy-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(8, 8, 12, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  color: #f3f4f6 !important;
+  opacity: 1 !important;
+  transition: opacity 0.3s ease !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.prodigy-overlay.prodigy-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  display: none !important;
+}
+
+/* Force hide utility class */
+.prodigy-hidden-force {
+  display: none !important;
+}
+
+/* Glassmorphic Modal Box — Refactored to flat Minimalist IDE Theme */
+.prodigy-modal {
+  background: #1e1e1e !important;
+  border: 1px solid #3c3c3c !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 6px !important;
+  padding: 28px !important;
+  width: 90% !important;
+  max-width: 440px !important;
+  text-align: left !important;
+  animation: prodigy-scale-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+}
+
+/* Minimalist Warning Icon */
+.prodigy-warning-icon {
+  display: inline-block !important;
+  color: #f14c4c !important;
+  margin-bottom: 12px !important;
+}
+
+.prodigy-warning-icon svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+/* Header Text styling */
+.prodigy-modal-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #f14c4c !important;
+  margin: 0 0 6px 0 !important;
+}
+
+.prodigy-modal-description {
+  font-size: 13px !important;
+  color: #cccccc !important;
+  margin: 0 0 20px 0 !important;
+  line-height: 1.5 !important;
+}
+
+/* Code block / Monospace styling for reason and details */
+.prodigy-reason-box {
+  background: #252526 !important;
+  border: 1px solid #2d2d2d !important;
+  border-radius: 4px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  font-family: Consolas, "Courier New", monospace !important;
+}
+
+.prodigy-reason-label {
+  font-size: 10px !important;
+  text-transform: uppercase !important;
+  color: #858585 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.prodigy-reason-text {
+  font-size: 12px !important;
+  color: #e0e0e0 !important;
+  font-weight: 500 !important;
+}
+
+/* Stat card showing violation counts */
+.prodigy-stat-card {
+  background: #252526 !important;
+  border: 1px solid #2d2d2d !important;
+  border-radius: 4px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 20px !important;
+  font-family: Consolas, "Courier New", monospace !important;
+}
+
+.prodigy-stat-label {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  color: #858585 !important;
+  text-transform: uppercase !important;
+  margin-bottom: 4px !important;
+}
+
+.prodigy-stat-value {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  color: #f14c4c !important;
+  line-height: 1 !important;
+}
+
+/* Warning subtext styling */
+.prodigy-warning-subtext {
+  font-size: 11px !important;
+  color: #858585 !important;
+  line-height: 1.5 !important;
+  margin: 0 0 24px 0 !important;
+}
+
+/* Flat IDE Button (VS Code blue style) */
+.prodigy-btn {
+  background: #0e639c !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  text-align: center !important;
+  transition: background 0.15s ease !important;
+  outline: none !important;
+}
+
+.prodigy-btn:hover {
+  background: #1177bb !important;
+}
+
+.prodigy-btn:active {
+  background: #0d598c !important;
+}
+
+/* Keyframes */
+@keyframes prodigy-scale-up {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Persistent active indicator */
+.prodigy-active-indicator {
+  position: fixed !important;
+  top: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  border-radius: 9999px !important;
+  padding: 8px 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  z-index: 2147483640 !important;
+  color: #ffffff !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  transition: opacity 0.3s ease !important;
+}
+
+.prodigy-active-title {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  color: #ffffff !important;
+}
+
+.prodigy-active-separator {
+  color: rgba(255, 255, 255, 0.25) !important;
+  font-weight: 300 !important;
+  margin: 0 2px !important;
+}
+
+.prodigy-active-hint {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #fcd34d !important; /* Soft warm amber yellow warning */
+}
+
+.prodigy-active-indicator-pulse {
+  width: 6px !important;
+  height: 6px !important;
+  background-color: #10b981 !important;
+  border-radius: 50% !important;
+  animation: prodigy-dot-pulse 1.5s infinite !important;
+}
+
+@keyframes prodigy-dot-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+    transform: scale(0.95);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    transform: scale(0.95);
+  }
+}
+
+/* Viewport frame active border — shadow only, no hard border */
+.prodigy-active-border {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  pointer-events: none !important;
+  z-index: 2147483639 !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  box-shadow: inset 0 0 40px 12px rgba(59, 130, 246, 0.55) !important;
+  transition: opacity 0.3s ease !important;
+  animation: prodigy-border-glow 2.5s infinite ease-in-out !important;
+}
+
+@keyframes prodigy-border-glow {
+  0%, 100% {
+    box-shadow: inset 0 0 35px 10px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: inset 0 0 55px 18px rgba(59, 130, 246, 0.75);
+  }
+}
+
+/* ─── Lockout Overlay ────────────────────────────────────────────────────── */
+.prodigy-lockout-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(6, 4, 4, 0.92) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  animation: prodigy-scale-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.prodigy-lockout-modal {
+  background: #1e1e1e !important;
+  border: 1px solid #3c3c3c !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 6px !important;
+  padding: 28px !important;
+  width: 90% !important;
+  max-width: 440px !important;
+  text-align: left !important;
+}
+
+.prodigy-lockout-icon {
+  display: inline-block !important;
+  color: #f14c4c !important;
+  margin-bottom: 12px !important;
+}
+
+.prodigy-lockout-icon svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.prodigy-lockout-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #f14c4c !important;
+  margin: 0 0 6px 0 !important;
+}
+
+.prodigy-lockout-description {
+  font-size: 13px !important;
+  color: #cccccc !important;
+  line-height: 1.5 !important;
+  margin: 0 0 20px 0 !important;
+}
+
+.prodigy-lockout-stat {
+  background: #252526 !important;
+  border: 1px solid #2d2d2d !important;
+  border-radius: 4px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 4px !important;
+  font-family: Consolas, "Courier New", monospace !important;
+}
+
+.prodigy-lockout-stat-label {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: #858585 !important;
+}
+
+.prodigy-lockout-stat-value {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  color: #f14c4c !important;
+  line-height: 1 !important;
+}
+
+.prodigy-lockout-contact {
+  font-size: 11px !important;
+  color: #858585 !important;
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+/* Countdown timer */
+.prodigy-lockout-countdown-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  margin-bottom: 20px !important;
+  background: #252526 !important;
+  border: 1px solid #2d2d2d !important;
+  border-radius: 4px !important;
+  padding: 12px 14px !important;
+  font-family: Consolas, "Courier New", monospace !important;
+}
+
+.prodigy-lockout-countdown-label {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #858585 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+.prodigy-lockout-timer {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #f14c4c !important;
+  line-height: 1 !important;
+  text-align: left !important;
+}
+
+/* ─── Warning Toast Notification ─────────────────────────────────────────── */
+.prodigy-toast {
+  position: fixed !important;
+  top: 72px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: #1e1e1e !important;
+  border: 1px solid #d97706 !important;
+  border-radius: 4px !important;
+  padding: 10px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  z-index: 2147483641 !important;
+  color: #cccccc !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  animation: prodigy-toast-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  transition: opacity 0.3s ease, transform 0.3s ease !important;
+}
+
+.prodigy-toast-fade-out {
+  opacity: 0 !important;
+  transform: translate(-50%, -10px) !important;
+}
+
+@keyframes prodigy-toast-slide-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ─── Proctor Tips Panel (Suspension Screen) ─────────────────────────────── */
+.prodigy-lockout-tips-box {
+  background: #252526 !important;
+  border: 1px solid #2d2d2d !important;
+  border-radius: 4px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 20px !important;
+  font-family: Consolas, "Courier New", monospace !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.prodigy-lockout-tips-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  padding-bottom: 6px !important;
+}
+
+.prodigy-lockout-tips-title {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #858585 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+.prodigy-lockout-tip-btn {
+  background: none !important;
+  border: none !important;
+  color: #0e639c !important;
+  cursor: pointer !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 0 !important;
+  text-transform: uppercase !important;
+  outline: none !important;
+}
+
+.prodigy-lockout-tip-btn:hover {
+  color: #1177bb !important;
+}
+
+.prodigy-lockout-tip-btn svg {
+  flex-shrink: 0 !important;
+}
+
+.prodigy-lockout-tip-text {
+  font-size: 12px !important;
+  color: #cccccc !important;
+  line-height: 1.5 !important;
+  text-align: left !important;
+}
+
+/* ─── Floating AI Chatbot Widget ─────────────────────────────────────────── */
+.prodigy-chat-widget {
+  position: fixed !important;
+  bottom: 90px !important;
+  right: 24px !important;
+  width: 380px !important;
+  height: 480px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  z-index: 2147483640 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  opacity: 1 !important;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+.prodigy-chat-widget.prodigy-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(20px) scale(0.95) !important;
+  display: none !important;
+}
+
+.prodigy-chat-header {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  padding: 14px 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  cursor: move !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  border-top-left-radius: 16px !important;
+  border-top-right-radius: 16px !important;
+}
+
+.prodigy-chat-header-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.prodigy-chat-close-btn {
+  background: none !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  transition: color 0.15s ease !important;
+  outline: none !important;
+}
+
+.prodigy-chat-close-btn:hover {
+  color: #ffffff !important;
+}
+
+.prodigy-chat-body {
+  flex-grow: 1 !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  background: #f8fafc !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.prodigy-chat-message {
+  max-width: 80% !important;
+  padding: 10px 14px !important;
+  border-radius: 14px !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  word-wrap: break-word !important;
+}
+
+.prodigy-chat-message.ai {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  align-self: flex-start !important;
+  border-top-left-radius: 4px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02) !important;
+}
+
+.prodigy-chat-message.user {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  align-self: flex-end !important;
+  border-top-right-radius: 4px !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15) !important;
+}
+
+.prodigy-chat-footer {
+  padding: 12px 16px !important;
+  background: #ffffff !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.prodigy-chat-input-wrapper {
+  flex-grow: 1 !important;
+  position: relative !important;
+}
+
+.prodigy-chat-input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 24px !important;
+  padding: 10px 18px !important;
+  font-size: 13px !important;
+  outline: none !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-family: inherit !important;
+  transition: border-color 0.15s ease !important;
+}
+
+.prodigy-chat-input:focus {
+  border-color: #6366f1 !important;
+}
+
+.prodigy-chat-send-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background-color 0.15s ease, transform 0.1s active !important;
+  outline: none !important;
+  flex-shrink: 0 !important;
+}
+
+.prodigy-chat-send-btn:hover {
+  background: #4f46e5 !important;
+}
+
+/* ─── Floating Chat Launcher Button ──────────────────────────────────────── */
+.prodigy-chat-launcher {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 2147483639 !important;
+  transition: transform 0.2s ease, background-color 0.15s ease !important;
+}
+
+.prodigy-chat-launcher:hover {
+  transform: scale(1.08) !important;
+  background: #4f46e5 !important;
+}
+
+/* ─── Highlight Selection Tooltip Popover ────────────────────────────────── */
+.prodigy-selection-tooltip {
+  position: absolute !important;
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  padding: 6px 12px !important;
+  border-radius: 20px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
+  cursor: pointer !important;
+  z-index: 2147483642 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  animation: prodigy-fade-in 0.15s ease-out forwards !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.prodigy-selection-tooltip::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 100% !important;
+  left: 50% !important;
+  margin-left: -5px !important;
+  border-width: 5px !important;
+  border-style: solid !important;
+  border-color: #6366f1 transparent transparent transparent !important;
+}
+
+.prodigy-selection-tooltip:hover {
+  background: #4f46e5 !important;
+  transform: translateY(-2px) !important;
+}
+
+/* ─── Typing Loading Indicator ───────────────────────────────────────────── */
+.prodigy-chat-typing-dots {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 6px !important;
+}
+
+.prodigy-chat-typing-dot {
+  width: 6px !important;
+  height: 6px !important;
+  background: #94a3b8 !important;
+  border-radius: 50% !important;
+  animation: prodigy-typing-bounce 1.4s infinite ease-in-out both !important;
+}
+
+.prodigy-chat-typing-dot:nth-child(1) { animation-delay: -0.32s !important; }
+.prodigy-chat-typing-dot:nth-child(2) { animation-delay: -0.16s !important; }
+
+@keyframes prodigy-typing-bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1.0); }
+}
+
+@keyframes prodigy-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Preflight Checklist Modal ─────────────────────────────────────────── */
+.prodigy-preflight-modal {
+  background: #1e1e1e !important;
+  border: 1px solid #3c3c3c !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 8px !important;
+  padding: 24px !important;
+  width: 90% !important;
+  max-width: 500px !important;
+  text-align: left !important;
+  animation: prodigy-scale-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  color: #cccccc !important;
+}
+
+.prodigy-preflight-title {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin: 0 0 6px 0 !important;
+  border-bottom: 1px solid #3c3c3c !important;
+  padding-bottom: 12px !important;
+}
+
+.prodigy-preflight-desc {
+  font-size: 13px !important;
+  color: #858585 !important;
+  margin-bottom: 16px !important;
+  line-height: 1.4 !important;
+}
+
+.prodigy-preflight-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  max-height: 280px !important;
+  overflow-y: auto !important;
+  margin-bottom: 20px !important;
+  padding-right: 6px !important;
+}
+
+/* Custom premium scrollbar for checklist list and AI chat widget body */
+.prodigy-preflight-list::-webkit-scrollbar,
+.prodigy-chat-body::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.prodigy-preflight-list::-webkit-scrollbar-track,
+.prodigy-chat-body::-webkit-scrollbar-track {
+  background: #1e1e1e !important;
+}
+
+.prodigy-preflight-list::-webkit-scrollbar-thumb,
+.prodigy-chat-body::-webkit-scrollbar-thumb {
+  background: #424242 !important;
+  border-radius: 3px !important;
+}
+
+.prodigy-preflight-list::-webkit-scrollbar-thumb:hover,
+.prodigy-chat-body::-webkit-scrollbar-thumb:hover {
+  background: #6366f1 !important;
+}
+
+.prodigy-preflight-item {
+  background: #252526 !important;
+  border: 1px solid #2d2d2d !important;
+  border-radius: 6px !important;
+  padding: 10px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  transition: border-color 0.15s ease !important;
+}
+
+.prodigy-preflight-item.failed {
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.prodigy-preflight-item.passed {
+  border-color: rgba(34, 197, 94, 0.4) !important;
+}
+
+.prodigy-preflight-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.prodigy-preflight-label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #e0e0e0 !important;
+}
+
+.prodigy-preflight-status {
+  display: flex !important;
+  align-items: center !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.prodigy-preflight-status.passed {
+  color: #22c55e !important;
+}
+
+.prodigy-preflight-status.failed {
+  color: #ef4444 !important;
+}
+
+.prodigy-preflight-status.checking {
+  color: #3b82f6 !important;
+}
+
+.prodigy-preflight-advice {
+  font-size: 11px !important;
+  color: #ef4444 !important;
+  padding-left: 2px !important;
+}
+
+.prodigy-preflight-actions {
+  display: flex !important;
+  gap: 12px !important;
+  justify-content: flex-end !important;
+}
+
+/* ─── Shield Health Monitor Badge ────────────────────────────────────────── */
+.prodigy-health-badge {
+  padding: 3px 8px !important;
+  border-radius: 12px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  vertical-align: middle !important;
+  margin-left: 8px !important;
+}
+
+.prodigy-health-badge.secure {
+  background: #15803d !important;
+  color: #ffffff !important;
+  border: 1px solid #22c55e !important;
+}
+
+.prodigy-health-badge.warning {
+  background: #b45309 !important;
+  color: #ffffff !important;
+  border: 1px solid #f59e0b !important;
+}
+
+.prodigy-health-badge.critical {
+  background: #b91c1c !important;
+  color: #ffffff !important;
+  border: 1px solid #ef4444 !important;
+  animation: prodigy-health-blink 1s infinite alternate !important;
+}
+
+@keyframes prodigy-health-blink {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}

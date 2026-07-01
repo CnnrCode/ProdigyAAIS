@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Prodigy Anti-Cheat Shield",
+  "version": "1.0.0",
+  "description": "Enforces strict fullscreen, application-focus checking, and tab-locking during Prodigy Review exams.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*.prodigyreview.ph/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.prodigyreview.ph/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Prodigy Anti-Cheat",
+    "default_icon": {
+      "16": "prodigy.png",
+      "32": "prodigy.png",
+      "48": "prodigy.png",
+      "128": "prodigy.png"
+    }
+  },
+  "icons": {
+    "16": "prodigy.png",
+    "32": "prodigy.png",
+    "48": "prodigy.png",
+    "128": "prodigy.png"
+  }
+}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Prodigy Shield Dashboard</title>
+  <style>
+    :root {
+      --bg-gradient-start: #0f111a;
+      --bg-gradient-end: #07080d;
+      --panel-bg: rgba(22, 24, 37, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #3b82f6;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .container {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header Styling */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .logo-icon svg {
+      width: 20px;
+      height: 20px;
+      color: white;
+    }
+
+    .title-area {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: 750;
+      letter-spacing: 0.02em;
+      margin: 0;
+      background: linear-gradient(to right, #ffffff, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin: 2px 0 0 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Card styling */
+    .card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-badge.idle {
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .status-badge.active {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      animation: pulse-green 2.5s infinite;
+    }
+
+    /* Violation styling */
+    .violation-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding-top: 12px;
+    }
+
+    .violation-count {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .violation-count.flagged {
+      color: var(--danger);
+    }
+
+    /* Violation log */
+    .log-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .log-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .log-entry {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      border-left: 2px solid rgba(239, 68, 68, 0.5);
+    }
+
+    .log-entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .log-time {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .log-flag-num {
+      font-size: 10px;
+      font-weight: 700;
+      color: #ef4444;
+    }
+
+    .log-reason {
+      font-size: 11px;
+      color: #e5e7eb;
+      line-height: 1.4;
+    }
+
+    .log-empty {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 6px 0;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      </div>
+      <div class="title-area">
+        <span class="title">Prodigy Shield</span>
+        <span class="subtitle">Anti-Cheat System</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="status-row">
+        <span class="status-label">Security Mode</span>
+        <span id="status-badge" class="status-badge idle">Idle</span>
+      </div>
+      <div class="violation-row">
+        <span class="status-label">Integrity Flags</span>
+        <span id="violations-count" class="violation-count">0</span>
+      </div>
+    </div>
+
+    <!-- Violation Log -->
+    <div class="log-card">
+      <span class="log-title">Recent Violations</span>
+      <div id="violation-log">
+        <p class="log-empty">No violations recorded.</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      Monitors tab switching, Alt+Tab, fullscreen, DevTools, keyboard shortcuts, right-click, copy/paste. Auto-locks after every <strong>5 flags</strong> (configurable via Admin Panel).
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
