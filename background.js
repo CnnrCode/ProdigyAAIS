@@ -210,9 +210,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     syncRemoteConfig();
     
     setExamMode(true, tabId, windowId);
-    chrome.storage.local.set({ examUsername: message.username, examStartUrl: sender.tab.url });
-    chrome.storage.local.get(['violations'], (res) => {
-      sendResponse({ success: true, violations: res.violations || 0 });
+    
+    // Reset flags and logs to 0/empty to start the new exam session fresh!
+    chrome.storage.local.set({ 
+      violations: 0, 
+      lockoutExpiry: 0, 
+      lockouts: 0, 
+      violationLog: [],
+      examUsername: message.username, 
+      examStartUrl: sender.tab.url 
+    }, () => {
+      sendResponse({ success: true, violations: 0 });
     });
     return true; // keep channel open for async response
   } else if (message.type === 'SUBMIT_EXAM') {
