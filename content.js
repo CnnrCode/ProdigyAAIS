@@ -1179,9 +1179,25 @@ function showLockoutOverlay(violationsCount, duration) {
   clockEl.className = 'prodigy-lockout-clock-widget';
   clockEl.innerHTML = `
     <div class="prodigy-lockout-clock-handle">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="prodigy-lockout-clock-icon">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-      </svg>
+      <div class="prodigy-clock-premium">
+        <svg viewBox="0 0 100 100" class="prodigy-clock-svg">
+          <circle cx="50" cy="50" r="46" class="prodigy-clock-dial-border" />
+          <circle cx="50" cy="50" r="43" class="prodigy-clock-dial-face" />
+          <line x1="50" y1="12" x2="50" y2="7" class="prodigy-clock-tick" />
+          <line x1="50" y1="88" x2="50" y2="93" class="prodigy-clock-tick" />
+          <line x1="12" y1="50" x2="17" y2="50" class="prodigy-clock-tick" />
+          <line x1="88" y1="50" x2="93" y2="50" class="prodigy-clock-tick" />
+          <line x1="31" y1="18" x2="33.5" y2="22.3" class="prodigy-clock-tick sub" />
+          <line x1="69" y1="18" x2="66.5" y2="22.3" class="prodigy-clock-tick sub" />
+          <line x1="31" y1="82" x2="33.5" y2="77.7" class="prodigy-clock-tick sub" />
+          <line x1="69" y1="82" x2="66.5" y2="77.7" class="prodigy-clock-tick sub" />
+          <line x1="50" y1="50" x2="50" y2="24" class="prodigy-clock-hand minute" />
+          <line x1="50" y1="50" x2="50" y2="32" class="prodigy-clock-hand hour" />
+          <line x1="50" y1="50" x2="50" y2="18" class="prodigy-clock-hand second" />
+          <circle cx="50" cy="50" r="3.5" class="prodigy-clock-pin" />
+          <circle cx="50" cy="50" r="1.5" class="prodigy-clock-pin-inner" />
+        </svg>
+      </div>
       <div class="prodigy-lockout-clock-time" id="prodigy-lockout-clock-time">${lockoutDuration}</div>
     </div>
   `;
@@ -2301,11 +2317,9 @@ try {
         return;
       }
 
-      if (isQuestionDivPresent()) {
-        restoreExamSession(result);
-      } else {
-        safeSendMessage({ type: 'SUBMIT_EXAM' });
-      }
+      // Always restore the exam session on load if active, and let the question monitor loop
+      // bounds check and recover the layout or auto-submit if genuinely missing for >3s.
+      restoreExamSession(result);
     });
   }
 } catch (err) {
