@@ -1,357 +1,504 @@
 {
   "Pablo Escultor (Brave)": {
     "username": "Pablo Escultor (Brave)",
-    "cumulativeFlags": 38,
-    "cumulativeLocks": 9,
-    "lastActive": "2026-07-01T01:54:22.095Z",
+    "cumulativeFlags": 62,
+    "violationEvents": 13,
+    "flagPoints": 62,
+    "cumulativeLocks": 11,
+    "lastActive": "2026-07-03T07:20:49.833Z",
     "history": [
-      {
-        "type": "violation",
-        "detail": "Window focus lost (Alt+Tab or click away)",
-        "timestamp": "2026-07-01T01:11:28.819Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tab visibility hidden (Switched tab or minimized)",
-        "timestamp": "2026-07-01T01:11:28.925Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:08.543Z"
-      },
-      {
-        "type": "lockout",
-        "detail": "Session suspended for 180 seconds",
-        "timestamp": "2026-07-01T01:14:08.550Z"
-      },
-      {
-        "type": "unlock_request",
-        "detail": "Requested administrator unlock",
-        "timestamp": "2026-07-01T01:14:11.434Z"
-      },
-      {
-        "type": "unlock",
-        "detail": "Unlocked by Administrator",
-        "timestamp": "2026-07-01T01:14:22.754Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:29.943Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Fullscreen exited manually",
-        "timestamp": "2026-07-01T01:14:33.032Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:36.135Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:36.286Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:36.430Z"
-      },
-      {
-        "type": "lockout",
-        "detail": "Session suspended for 240 seconds",
-        "timestamp": "2026-07-01T01:14:36.435Z"
-      },
-      {
-        "type": "unlock_request",
-        "detail": "Requested administrator unlock",
-        "timestamp": "2026-07-01T01:14:37.819Z"
-      },
-      {
-        "type": "unlock",
-        "detail": "Unlocked by Administrator",
-        "timestamp": "2026-07-01T01:14:40.634Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:45.718Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Fullscreen exited manually",
-        "timestamp": "2026-07-01T01:14:45.759Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:46.439Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:49.294Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Developer Tools shortcut blocked (F12)",
-        "timestamp": "2026-07-01T01:14:49.438Z"
-      },
-      {
-        "type": "lockout",
-        "detail": "Session suspended for 300 seconds",
-        "timestamp": "2026-07-01T01:14:49.443Z"
-      },
-      {
-        "type": "unlock_request",
-        "detail": "Requested administrator unlock",
-        "timestamp": "2026-07-01T01:14:50.682Z"
-      },
-      {
-        "type": "unlock",
-        "detail": "Unlocked by Administrator",
-        "timestamp": "2026-07-01T01:15:14.685Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Window focus lost (Alt+Tab or click away)",
-        "timestamp": "2026-07-01T01:15:55.234Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Fullscreen exited manually",
-        "timestamp": "2026-07-01T01:16:02.245Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Fullscreen exited manually",
-        "timestamp": "2026-07-01T01:16:04.836Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Fullscreen exited manually",
-        "timestamp": "2026-07-01T01:16:05.885Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Fullscreen exited manually",
-        "timestamp": "2026-07-01T01:16:06.477Z"
-      },
-      {
-        "type": "lockout",
-        "detail": "Session suspended for 360 seconds",
-        "timestamp": "2026-07-01T01:16:06.488Z"
-      },
       {
         "type": "start",
         "detail": "Exam session started",
-        "timestamp": "2026-07-01T01:40:37.668Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:39.242Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:40.634Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:41.450Z"
-      },
-      {
-        "type": "lockout",
-        "detail": "Session suspended for 420 seconds",
-        "timestamp": "2026-07-01T01:40:41.460Z"
-      },
-      {
-        "type": "unlock_request",
-        "detail": "Requested administrator unlock",
-        "timestamp": "2026-07-01T01:40:41.666Z"
-      },
-      {
-        "type": "unlock",
-        "detail": "Unlocked by Administrator",
-        "timestamp": "2026-07-01T01:40:47.697Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Removed proctor element: #prodigy-lockout-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:47.816Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-fullscreen-required-overlay [Medium] (+2)",
-        "timestamp": "2026-07-01T01:40:49.349Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:50.282Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:51.482Z"
-      },
-      {
-        "type": "lockout",
-        "detail": "Session suspended for 480 seconds",
-        "timestamp": "2026-07-01T01:40:51.489Z"
-      },
-      {
-        "type": "unlock_request",
-        "detail": "Requested administrator unlock",
-        "timestamp": "2026-07-01T01:40:53.490Z"
-      },
-      {
-        "type": "unlock",
-        "detail": "Unlocked by Administrator",
-        "timestamp": "2026-07-01T01:40:56.610Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Removed proctor element: #prodigy-lockout-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:57.544Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-fullscreen-required-overlay [Medium] (+2)",
-        "timestamp": "2026-07-01T01:40:58.179Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:58.738Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:40:58.914Z"
-      },
-      {
-        "type": "lockout",
-        "detail": "Session suspended for 540 seconds",
-        "timestamp": "2026-07-01T01:40:58.925Z"
-      },
-      {
-        "type": "unlock_request",
-        "detail": "Requested administrator unlock",
-        "timestamp": "2026-07-01T01:40:59.675Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Window focus lost (Alt+Tab or system interaction detected) [High] (+5)",
-        "timestamp": "2026-07-01T01:51:07.628Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tab change detected [High] (+5)",
-        "timestamp": "2026-07-01T01:51:07.629Z"
-      },
-      {
-        "type": "unlock",
-        "detail": "Unlocked by Administrator",
-        "timestamp": "2026-07-01T01:52:36.900Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Removed proctor element: #prodigy-lockout-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:52:37.402Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-fullscreen-required-overlay [Medium] (+2)",
-        "timestamp": "2026-07-01T01:52:38.150Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:52:38.706Z"
-      },
-      {
-        "type": "violation",
-        "detail": "Tampering detected: Hid proctor element: #prodigy-anti-cheat-overlay [Low] (+1)",
-        "timestamp": "2026-07-01T01:52:39.369Z"
-      },
-      {
-        "type": "lockout",
-        "detail": "Session suspended for 660 seconds",
-        "timestamp": "2026-07-01T01:52:39.384Z"
-      },
-      {
-        "type": "unlock",
-        "detail": "Unlocked by Administrator",
-        "timestamp": "2026-07-01T01:52:56.085Z"
+        "timestamp": "2026-07-03T05:59:43.840Z",
+        "sessionId": "sess_1783058383812_04lca2cf5"
       },
       {
         "type": "submit",
         "detail": "Exam session ended / submitted",
-        "timestamp": "2026-07-01T01:52:57.421Z"
+        "timestamp": "2026-07-03T06:00:00.463Z",
+        "sessionId": "sess_1783058383812_04lca2cf5"
       },
       {
         "type": "start",
         "detail": "Exam session started",
-        "timestamp": "2026-07-01T01:53:10.779Z"
+        "timestamp": "2026-07-03T06:00:12.046Z",
+        "sessionId": "sess_1783058412028_90jn4rza4"
+      },
+      {
+        "type": "submit",
+        "detail": "Exam session ended / submitted",
+        "timestamp": "2026-07-03T06:00:27.706Z",
+        "sessionId": "sess_1783058412028_90jn4rza4"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T06:58:57.142Z",
+        "sessionId": "sess_1783061937103_nxbb3gq4q"
+      },
+      {
+        "type": "submit",
+        "detail": "Exam session ended / submitted",
+        "timestamp": "2026-07-03T06:59:01.530Z",
+        "sessionId": "sess_1783061937103_nxbb3gq4q"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T06:59:09.000Z",
+        "sessionId": "sess_1783061948993_vq239llas"
       },
       {
         "type": "violation",
-        "detail": "Window focus lost (Alt+Tab or click away) [High] (+5)",
-        "timestamp": "2026-07-01T01:53:16.090Z"
+        "detail": "Developer Tools shortcut blocked (F12) [High] (+5)",
+        "timestamp": "2026-07-03T06:59:19.192Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 5
       },
       {
         "type": "lockout",
         "detail": "Session suspended for 60 seconds",
-        "timestamp": "2026-07-01T01:53:16.095Z"
+        "timestamp": "2026-07-03T06:59:19.202Z",
+        "sessionId": "sess_1783061948993_vq239llas"
       },
       {
-        "type": "unlock_request",
-        "detail": "Requested administrator unlock",
-        "timestamp": "2026-07-01T01:53:19.295Z"
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:03:36.077Z",
+        "sessionId": "sess_1783061948993_vq239llas"
       },
       {
         "type": "violation",
-        "detail": "Window focus lost (Alt+Tab or system interaction detected) [High] (+5)",
-        "timestamp": "2026-07-01T01:54:22.094Z"
+        "detail": "Fullscreen exited manually [Medium] (+2)",
+        "timestamp": "2026-07-03T07:03:36.479Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 2
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:03:36.478Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:04:49.653Z",
+        "sessionId": "sess_1783061948993_vq239llas"
       },
       {
         "type": "violation",
         "detail": "Tab change detected [High] (+5)",
-        "timestamp": "2026-07-01T01:54:22.095Z"
+        "timestamp": "2026-07-03T07:04:58.020Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:04:58.033Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:06:40.154Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "violation",
+        "detail": "Tab change detected [High] (+5)",
+        "timestamp": "2026-07-03T07:08:44.678Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:08:44.714Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:09:45.150Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "violation",
+        "detail": "Tab change detected [High] (+5)",
+        "timestamp": "2026-07-03T07:10:14.364Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:10:14.374Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:11:14.380Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or system interaction detected) [High] (+5)",
+        "timestamp": "2026-07-03T07:11:15.615Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:11:15.619Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Appeal: asd",
+        "timestamp": "2026-07-03T07:11:19.316Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:12:16.146Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or system interaction detected) [High] (+5)",
+        "timestamp": "2026-07-03T07:13:36.848Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 5
+      },
+      {
+        "type": "violation",
+        "detail": "Tab change detected [High] (+5)",
+        "timestamp": "2026-07-03T07:13:36.850Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:13:36.862Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "violation",
+        "detail": "Tab change detected [High] (+5)",
+        "timestamp": "2026-07-03T07:14:44.075Z",
+        "sessionId": "sess_1783061948993_vq239llas",
+        "weight": 5
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-03T07:15:31.226Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "submit",
+        "detail": "Exam session ended / submitted",
+        "timestamp": "2026-07-03T07:15:33.155Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:16:08.677Z",
+        "sessionId": "sess_1783062968638_eopnhbv84"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12) [High] (+5)",
+        "timestamp": "2026-07-03T07:16:14.258Z",
+        "sessionId": "sess_1783062968638_eopnhbv84",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:16:14.271Z",
+        "sessionId": "sess_1783062968638_eopnhbv84"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:18:30.338Z",
+        "sessionId": "sess_1783063110304_597q9kmo8"
+      },
+      {
+        "type": "violation",
+        "detail": "Developer Tools shortcut blocked (F12) [High] (+5)",
+        "timestamp": "2026-07-03T07:18:31.469Z",
+        "sessionId": "sess_1783063110304_597q9kmo8",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:18:31.491Z",
+        "sessionId": "sess_1783063110304_597q9kmo8"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:19:40.132Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb"
+      },
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or click away) [High] (+5)",
+        "timestamp": "2026-07-03T07:19:40.502Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:19:40.537Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Appeal: ads",
+        "timestamp": "2026-07-03T07:20:15.278Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-03T07:20:27.342Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb"
+      },
+      {
+        "type": "violation",
+        "detail": "Window focus lost (Alt+Tab or system interaction detected) [High] (+5)",
+        "timestamp": "2026-07-03T07:20:31.180Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb",
+        "weight": 5
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 60 seconds",
+        "timestamp": "2026-07-03T07:20:31.183Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Appeal: asd",
+        "timestamp": "2026-07-03T07:20:35.792Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-03T07:20:44.927Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb"
+      },
+      {
+        "type": "submit",
+        "detail": "Exam session ended / submitted",
+        "timestamp": "2026-07-03T07:20:49.833Z",
+        "sessionId": "sess_1783063180105_b0ckdt3nb"
       }
     ]
   },
   "Zen Student (Brave)": {
     "username": "Zen Student (Brave)",
     "cumulativeFlags": 0,
-    "cumulativeLocks": 1,
-    "lastActive": "2026-07-01T01:52:56.820Z",
+    "violationEvents": 0,
+    "flagPoints": 0,
+    "cumulativeLocks": 3,
+    "lastActive": "2026-07-03T07:15:31.828Z",
     "history": [
       {
         "type": "lockout",
-        "detail": "Session suspended for 651 seconds",
-        "timestamp": "2026-07-01T01:52:48.960Z"
+        "detail": "Session suspended for 55 seconds",
+        "timestamp": "2026-07-03T07:14:49.504Z",
+        "sessionId": "sess_1783061948993_vq239llas"
       },
       {
         "type": "start",
         "detail": "Exam session started",
-        "timestamp": "2026-07-01T01:52:48.962Z"
+        "timestamp": "2026-07-03T07:14:49.509Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 35 seconds",
+        "timestamp": "2026-07-03T07:15:10.032Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:15:10.046Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 27 seconds",
+        "timestamp": "2026-07-03T07:15:18.916Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:15:18.927Z",
+        "sessionId": "sess_1783061948993_vq239llas"
       },
       {
         "type": "unlock_request",
-        "detail": "Requested administrator unlock",
-        "timestamp": "2026-07-01T01:52:50.402Z"
+        "detail": "Appeal: No it wasnt me",
+        "timestamp": "2026-07-03T07:15:27.924Z",
+        "sessionId": "sess_1783061948993_vq239llas"
       },
       {
         "type": "unlock",
         "detail": "Unlocked by Administrator",
-        "timestamp": "2026-07-01T01:52:56.820Z"
+        "timestamp": "2026-07-03T07:15:31.828Z",
+        "sessionId": "sess_1783061948993_vq239llas"
+      }
+    ]
+  },
+  "Pablo Escultor (Chrome)": {
+    "username": "Pablo Escultor (Chrome)",
+    "cumulativeFlags": 20,
+    "violationEvents": 2,
+    "flagPoints": 20,
+    "cumulativeLocks": 0,
+    "lastActive": "2026-07-03T07:20:27.547Z",
+    "history": [
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-03T07:15:32.701Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "violation",
+        "detail": "Browser-switch evasion detected: locked on (Brave), attempting access from (Chrome)",
+        "timestamp": "2026-07-03T07:19:26.516Z",
+        "sessionId": "sess_1783063110304_597q9kmo8",
+        "weight": 10
+      },
+      {
+        "type": "violation",
+        "detail": "Browser-switch evasion detected [Critical] (+10): Attempted to bypass active lockout by switching browsers",
+        "timestamp": "2026-07-03T07:19:26.521Z",
+        "sessionId": "",
+        "weight": 10
+      },
+      {
+        "type": "submit",
+        "detail": "Exam session ended / submitted",
+        "timestamp": "2026-07-03T07:20:27.547Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      }
+    ]
+  },
+  "Pablo Escultor (Edge)": {
+    "username": "Pablo Escultor (Edge)",
+    "cumulativeFlags": 0,
+    "violationEvents": 0,
+    "flagPoints": 0,
+    "cumulativeLocks": 0,
+    "lastActive": "2026-07-03T07:15:33.021Z",
+    "history": [
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-03T07:15:33.021Z",
+        "sessionId": "sess_1782905647712_3pd5ba5os"
+      }
+    ]
+  },
+  "Zen Student (Chrome)": {
+    "username": "Zen Student (Chrome)",
+    "cumulativeFlags": 0,
+    "violationEvents": 0,
+    "flagPoints": 0,
+    "cumulativeLocks": 5,
+    "lastActive": "2026-07-03T07:20:26.790Z",
+    "history": [
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 299 seconds",
+        "timestamp": "2026-07-03T07:19:27.996Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:19:28.006Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 286 seconds",
+        "timestamp": "2026-07-03T07:19:41.472Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:19:41.474Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 285 seconds",
+        "timestamp": "2026-07-03T07:19:43.256Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:19:43.259Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 284 seconds",
+        "timestamp": "2026-07-03T07:19:44.532Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:19:44.534Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "lockout",
+        "detail": "Session suspended for 284 seconds",
+        "timestamp": "2026-07-03T07:19:45.531Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "start",
+        "detail": "Exam session started",
+        "timestamp": "2026-07-03T07:19:45.533Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "unlock_request",
+        "detail": "Appeal: asd",
+        "timestamp": "2026-07-03T07:19:48.045Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
+      },
+      {
+        "type": "unlock",
+        "detail": "Unlocked by Administrator",
+        "timestamp": "2026-07-03T07:20:26.790Z",
+        "sessionId": "sess_1782905668645_87twa6g8j"
       }
     ]
   }

@@ -20,45 +20,21 @@ let localViolations = 0;                  // Cached violations count
 let questionDivCheckInterval = null;
 let questionDivMissingCount = 0;
 let lockoutPollInterval = null;
+let localRequireFullscreen = true;
+let localBlockDevTools = true;
+let localBlockTabSwitch = true;
+let localBlockRightClick = true;
+let localNoRestrictions = false;
+let sessionStatusSyncInProgress = false;
+let lastSessionStatus = null;
+let tamperObserver = null;
+let localLimitExits = false;         // Whether the exit-limit feature is enabled (admin)
+let localMaxExits = 3;               // Max number of times a student may exit an exam
+let cachedUsername = null;           // Cache the username to prevent 'Anonymous' fallback on reload before DOM is ready
 
-
-function getStudentName() {
-  let baseName = "Zen Student";
-  const profileSelectors = [
-    'span.text-sm.font-medium.text-gray-700',
-    '.user-profile', 
-    '.profile-name', 
-    '.profile-initials + span', 
-    'header span', 
-    'nav span',
-    '#student-name'
-  ];
-  for (let s of profileSelectors) {
-    const el = document.querySelector(s);
-    if (el && el.innerText.trim()) {
-      baseName = el.innerText.trim();
-      break;
-    }
-  }
-
-  if (baseName === "Zen Student") {
-    const allSpans = document.querySelectorAll('span, div');
-    for (let i = 0; i < allSpans.length; i++) {
-      const text = allSpans[i].textContent || '';
-      if (text.includes('Student') && text.length < 30) {
-        const clean = text.replace('(Student)', '').replace('Student', '').trim();
-        if (clean) {
-          baseName = clean;
-          break;
-        }
-      }
-    }
-  }
-
-  // Suffix by browser type and device platform so user can test multiple browsers/devices simultaneously
+function getBrowserSuffixOnly() {
   let browserSuffix = "";
   const ua = navigator.userAgent;
-  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
 
   if (navigator.brave !== undefined || (navigator.userAgentData && navigator.userAgentData.brands.some(b => b.brand === 'Brave'))) {
     browserSuffix = " (Brave)";
@@ -72,8 +48,74 @@ function getStudentName() {
     browserSuffix = " (Standard)";
   }
 
-  let deviceSuffix = isMobile ? " (Mobile)" : "";
-  return baseName + browserSuffix + deviceSuffix;
+  return browserSuffix;
+}
+
+// Pre-fetch the cached username from storage as early as possible
+chrome.storage.local.get(['examUsername'], (res) => {
+  if (res.examUsername) cachedUsername = res.examUsername;
+});
+
+// Cache the current browser suffix for the background service worker
+try {
+  chrome.storage.local.set({ browserSuffix: getBrowserSuffixOnly() });
+} catch (e) {}
+
+function getStudentName() {
+  // Prefer the stable username captured at exam start (this mirrors the value
+  // the background service worker uses for violation reports and that the admin
+  // panel displays). Using it everywhere guarantees the lockout, the appeal,
+  // and the check-lockout poll all key to the SAME server session. Re-scraping
+  // the DOM while the lockout overlay is up can yield a different or empty name,
+  // which registers the lock under the wrong user — leaving the admin unable to
+  // see the lock or release the student on appeal.
+  if (cachedUsername) {
+    const cachedClean = cachedUsername.replace(/\s*\((Chrome|Edge|Brave|Firefox|Standard|Mobile)\)/gi, '').trim();
+    if (cachedClean) return cachedClean;
+  }
+
+  let baseName = "";
+  const profileSelectors = [
+    'span.text-sm.font-medium.text-gray-700',
+    '.user-profile',
+    '.profile-name',
+    '.profile-initials + span',
+    'header span',
+    'nav span',
+    '#student-name'
+  ];
+  for (let s of profileSelectors) {
+    const el = document.querySelector(s);
+    if (el && el.innerText.trim()) {
+      baseName = el.innerText.trim();
+      break;
+    }
+  }
+
+  if (!baseName) {
+    const allSpans = document.querySelectorAll('span, div');
+    for (let i = 0; i < allSpans.length; i++) {
+      const text = allSpans[i].textContent || '';
+      if (text.includes('Student') && text.length < 30) {
+        const clean = text.replace('(Student)', '').replace('Student', '').trim();
+        if (clean) {
+          baseName = clean;
+          break;
+        }
+      }
+    }
+  }
+
+  // If we still can't find a name on the page, use the cached one from previous loads
+  if (!baseName && cachedUsername) {
+    baseName = cachedUsername.replace(/\s*\((Chrome|Edge|Brave|Firefox|Standard|Mobile)\)/gi, '').trim();
+  }
+
+  if (!baseName) {
+    baseName = "Anonymous";
+  }
+
+  return baseName;
 }
 
 function safeSendMessage(message, callback) {
@@ -83,7 +125,7 @@ function safeSendMessage(message, callback) {
       forceHideAllIndicators();
       return;
     }
-    
+
     // Automatically attach student's name if message is an object
     if (message && typeof message === 'object') {
       if (!message.username) {
@@ -133,17 +175,14 @@ function cleanupAllExtensionContext() {
     clearInterval(questionDivCheckInterval);
     questionDivCheckInterval = null;
   }
-  if (lockoutPollInterval) {
-    clearInterval(lockoutPollInterval);
-    lockoutPollInterval = null;
-  }
-  if (tamperObserver) {
+  clearLockoutPoll()
+  if (typeof tamperObserver !== 'undefined' && tamperObserver) {
     try {
       tamperObserver.disconnect();
-    } catch (e) {}
+    } catch (e) { }
     tamperObserver = null;
   }
-  
+
   // Remove event listeners
   try {
     window.removeEventListener('blur', handleBlur);
@@ -155,7 +194,7 @@ function cleanupAllExtensionContext() {
     document.removeEventListener('cut', handleCut);
     document.removeEventListener('paste', handlePaste);
     document.removeEventListener('click', handleExamNavigationBlocker, true);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function safeHideElement(el) {
@@ -173,34 +212,105 @@ function safeRemoveElement(el) {
   el.remove();
 }
 
+function isSessionPaused() {
+  const lockoutEl = document.getElementById('prodigy-lockout-overlay');
+  const warningEl = document.getElementById('prodigy-anti-cheat-overlay');
+  const isLockoutActive = !!lockoutEl;
+  const isWarningActive = warningEl && !warningEl.classList.contains('prodigy-hidden');
+  return isLockoutActive || isWarningActive;
+}
+
+function syncSessionStatus(status, extra = {}) {
+  if (sessionStatusSyncInProgress && lastSessionStatus === status) return;
+  sessionStatusSyncInProgress = true;
+  lastSessionStatus = status;
+
+  const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
+  const username = getStudentName();
+  chrome.storage.local.get(['violations', 'lockouts', 'examSessionId'], (res) => {
+    const payload = Object.assign({
+      username,
+      status,
+      flags: res.violations || 0,
+      locks: res.lockouts || 0,
+      sessionId: res.examSessionId || '',
+      browserSuffix: getBrowserSuffixOnly()
+    }, extra);
+
+    safeFetch(`${origin}/api/session-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .catch(err => console.log('Proctor sync status error:', err))
+      .finally(() => {
+        sessionStatusSyncInProgress = false;
+      });
+  });
+}
+
+function clearLockoutPoll() {
+  if (lockoutPollInterval) {
+    clearInterval(lockoutPollInterval);
+    lockoutPollInterval = null;
+  }
+}
+
 function safeFetch(url, options = {}) {
   return new Promise((resolve, reject) => {
-    safeSendMessage({
-      type: 'FETCH_API',
-      url: url,
-      options: options
-    }, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(new TypeError(chrome.runtime.lastError.message));
-        return;
+    if (isContextInvalidated()) {
+      reject(new TypeError('Extension context invalidated'));
+      return;
+    }
+
+    let timeoutId = setTimeout(() => {
+      timeoutId = null;
+      reject(new TypeError('safeFetch request timed out'));
+    }, 5500);
+
+    try {
+      safeSendMessage({
+        type: 'FETCH_API',
+        url: url,
+        options: options
+      }, (response) => {
+        if (!timeoutId) return; // already timed out
+        clearTimeout(timeoutId);
+        timeoutId = null;
+
+        if (chrome.runtime.lastError) {
+          reject(new TypeError(chrome.runtime.lastError.message));
+          return;
+        }
+        if (response && response.success) {
+          resolve(response.data);
+        } else {
+          reject(new TypeError(response ? response.error : 'Network request failed'));
+        }
+      });
+    } catch (err) {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
       }
-      if (response && response.success) {
-        resolve(response.data);
-      } else {
-        reject(new TypeError(response ? response.error : 'Network request failed'));
-      }
-    });
+      reject(err);
+    }
   });
 }
 
 function requestFullscreen() {
+  if (isSessionPaused()) {
+    return;
+  }
   if (!document.fullscreenElement) {
     if (window.navigator?.userActivation && !window.navigator.userActivation.isActive) {
+      showFullscreenRequiredModal();
       return;
     }
     const el = document.documentElement || document.body;
     el.requestFullscreen().catch((err) => {
       console.warn('Fullscreen request failed or was blocked: ', err);
+      showFullscreenRequiredModal();
     });
   }
 }
@@ -295,10 +405,10 @@ function startQuestionDivMonitor() {
 
     if (isQuestionDivPresent()) {
       questionDivMissingCount = 0;
-      
+
       // Periodically enforce fullscreen requirement
       chrome.storage.local.get(['requireFullscreen'], (res) => {
-        if (res.requireFullscreen !== false && !document.fullscreenElement && !document.getElementById('prodigy-lockout-overlay')) {
+        if (res.requireFullscreen !== false && !document.fullscreenElement && !isSessionPaused()) {
           showFullscreenRequiredModal();
         } else if (document.fullscreenElement) {
           hideFullscreenRequiredModal();
@@ -336,11 +446,11 @@ function hideWebsiteChatbotElements() {
   const inputs = document.querySelectorAll('input, textarea');
   inputs.forEach(input => {
     if (input.id && input.id.startsWith('prodigy-')) return;
-    
+
     const placeholder = (input.getAttribute('placeholder') || '').toLowerCase();
     if (placeholder.includes('ask') || placeholder.includes('tutor') || placeholder.includes('chat') || placeholder.includes('reply')) {
       input.style.setProperty('display', 'none', 'important');
-      
+
       let parent = input.parentElement;
       while (parent && parent !== document.body) {
         const style = window.getComputedStyle(parent);
@@ -360,7 +470,7 @@ function hideWebsiteChatbotElements() {
     if (el.id && el.id.startsWith('prodigy-')) continue;
 
     const idStr = (el.id || '').toLowerCase();
-    
+
     let classStr = '';
     if (el.className) {
       if (typeof el.className === 'string') {
@@ -371,10 +481,10 @@ function hideWebsiteChatbotElements() {
     }
     classStr = classStr.toLowerCase();
 
-    const isMatch = idStr.includes('chat') || 
-                    idStr.includes('tutor') || 
-                    classStr.includes('chat') || 
-                    classStr.includes('tutor');
+    const isMatch = idStr.includes('chat') ||
+      idStr.includes('tutor') ||
+      classStr.includes('chat') ||
+      classStr.includes('tutor');
 
     if (isMatch) {
       el.style.setProperty('display', 'none', 'important');
@@ -386,12 +496,12 @@ function hideWebsiteChatbotElements() {
     if (style.position === 'fixed' || style.position === 'absolute') {
       const bottom = parseFloat(style.bottom);
       const right = parseFloat(style.right);
-      
+
       // Bottom-right corner threshold (within 120px from edge)
       if (!isNaN(bottom) && !isNaN(right) && bottom >= 0 && bottom < 120 && right >= 0 && right < 120) {
         const width = parseFloat(style.width);
         const height = parseFloat(style.height);
-        
+
         // Chatbot bubble is usually a small button or circle (width/height between 25px and 100px)
         if (width > 25 && width < 100 && height > 25 && height < 100) {
           el.style.setProperty('display', 'none', 'important');
@@ -417,35 +527,62 @@ function stopWebsiteChatbotHider() {
 
 function startDevToolsDetection() {
   devToolsOpen = false;
+  if (!localBlockDevTools || localNoRestrictions) return;
   if (devToolsCheckInterval) clearInterval(devToolsCheckInterval);
   devToolsCheckInterval = setInterval(() => {
+    if (isContextInvalidated()) return;
     if (!localExamActive) return;
+    if (!localBlockDevTools || localNoRestrictions) return;
 
-    chrome.storage.local.get(['blockDevTools'], (res) => {
-      if (res.blockDevTools === false) return;
+    safeSendMessage({ type: 'PING' }, (response) => {
+      if (isContextInvalidated() || !localExamActive) return;
+      if (!localBlockDevTools || localNoRestrictions) return;
 
       const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const isSnappedOrResized = !isMobile && (
-        window.outerWidth < (window.screen.availWidth * 0.85) ||
-        window.outerHeight < (window.screen.availHeight * 0.85)
-      );
 
-      const DEVTOOLS_THRESHOLD = 160;
-      const isSizeMismatch =
-        (window.outerWidth - window.innerWidth) > DEVTOOLS_THRESHOLD ||
-        (window.outerHeight - window.innerHeight) > DEVTOOLS_THRESHOLD;
+      let isSizeMismatch = false;
+      let isSnappedOrResized = false;
+
+      if (response && response.success && response.windowWidth && response.windowHeight) {
+        const diffWidth = response.windowWidth - window.innerWidth;
+        const diffHeight = response.windowHeight - window.innerHeight;
+        
+        const isEmulated = Math.abs(window.outerWidth - response.windowWidth) > 20 ||
+                           Math.abs(window.outerHeight - response.windowHeight) > 20;
+        
+        isSizeMismatch = diffWidth > 120 || diffHeight > 120 || isEmulated;
+        
+        if (response.windowState !== 'maximized' && response.windowState !== 'fullscreen') {
+          isSnappedOrResized = true;
+        }
+      } else {
+        const DEVTOOLS_THRESHOLD = 160;
+        isSizeMismatch =
+          (window.outerWidth - window.innerWidth) > DEVTOOLS_THRESHOLD ||
+          (window.outerHeight - window.innerHeight) > DEVTOOLS_THRESHOLD;
+
+        isSnappedOrResized = !isMobile && (
+          window.outerWidth < (window.screen.availWidth * 0.85) ||
+          window.outerHeight < (window.screen.availHeight * 0.85)
+        );
+      }
 
       if (isSizeMismatch && !devToolsOpen) {
         devToolsOpen = true;
         updateShieldHealth('Interrupted');
 
         const reason = isSnappedOrResized
-          ? 'Window snapped or split-screened'
+          ? 'Window snapped, split-screened, or not maximized'
           : 'Developer Tools or Side Panel opened';
 
+        // ZERO-TOLERANCE for DevTools / side panels: force an immediate lockout
+        // instead of merely adding flags. With a high milestoneInterval, a +5 flag
+        // violation would never cross the lockout threshold, letting a student sit
+        // in the exam with the inspector open. Snap/resize stays flag-based.
         safeSendMessage({
           type: 'REPORT_VIOLATION',
-          reason: reason
+          reason: reason,
+          forceLockout: !isSnappedOrResized
         });
       } else if (!isSizeMismatch) {
         if (devToolsOpen) {
@@ -456,8 +593,6 @@ function startDevToolsDetection() {
     });
   }, 1000);
 }
-
-let tamperObserver = null;
 
 function startTamperMonitor() {
   if (tamperObserver) stopTamperMonitor();
@@ -471,27 +606,22 @@ function startTamperMonitor() {
     let tamperDetails = '';
 
     for (let mutation of mutations) {
-      // 1. Check for removed nodes
+      // 1. Check for removed nodes (Deletions)
       if (mutation.type === 'childList') {
         mutation.removedNodes.forEach((node) => {
           const hasProdigyPrefix = (node.id && node.id.startsWith('prodigy-')) ||
-                                   (node.classList && Array.from(node.classList).some(c => c.startsWith('prodigy-')));
+            (node.classList && Array.from(node.classList).some(c => c.startsWith('prodigy-')));
           if (hasProdigyPrefix) {
-            // Exceptions: toast notification, preflight check modal, and refresh prompt are allowed to be removed
-            if (node.id === 'prodigy-toast-notification' || node.id === 'prodigy-preflight-overlay' || node.id === 'prodigy-refresh-prompt') {
-              return;
-            }
-            
             // Check programmatic flag
             if (node.dataset && node.dataset.programmatic === 'true') {
               return;
             }
-            
+
             // If the active indicator, active border, lockout overlay, or fullscreen overlay is removed
-            if (node.id === 'prodigy-lockout-overlay' || 
-                node.classList?.contains('prodigy-active-indicator') || 
-                node.classList?.contains('prodigy-active-border') ||
-                node.id === 'prodigy-fullscreen-required-overlay') {
+            if (node.id === 'prodigy-lockout-overlay' ||
+              node.classList?.contains('prodigy-active-indicator') ||
+              node.classList?.contains('prodigy-active-border') ||
+              node.id === 'prodigy-fullscreen-required-overlay') {
               detectedTampering = true;
               tamperDetails = `Removed proctor element: #${node.id || node.className}`;
             }
@@ -503,36 +633,40 @@ function startTamperMonitor() {
       if (mutation.type === 'attributes' && mutation.attributeName) {
         const target = mutation.target;
         const hasProdigyPrefix = (target.id && target.id.startsWith('prodigy-')) ||
-                                 (target.classList && Array.from(target.classList).some(c => c.startsWith('prodigy-')));
+          (target.classList && Array.from(target.classList).some(c => c.startsWith('prodigy-')));
+
         if (hasProdigyPrefix) {
-          if (target.id === 'prodigy-toast-notification' || target.id === 'prodigy-preflight-overlay' || target.id === 'prodigy-refresh-prompt') {
-            return;
+          // Only enforce anti-hiding on critical top-level overlays/indicators
+          const isCriticalElement = target.id === 'prodigy-lockout-overlay' ||
+            target.classList?.contains('prodigy-active-indicator') ||
+            target.classList?.contains('prodigy-active-border') ||
+            target.id === 'prodigy-fullscreen-required-overlay';
+
+          if (!isCriticalElement) {
+            continue;
           }
-          
+
           // Check programmatic flag
           if (target.dataset && target.dataset.programmatic === 'true') {
-            return;
+            continue;
           }
 
-          // If the element has been hidden using inline style display: none, opacity: 0, visibility: hidden, etc.
-          const style = target.getAttribute('style') || '';
-          const styleLower = style.toLowerCase();
-          const isStyleHidden = styleLower.includes('display: none') || 
-                                styleLower.includes('visibility: hidden') || 
-                                styleLower.includes('opacity: 0') ||
-                                styleLower.includes('display:none');
+          // Accurate hiding detection using ComputedStyle (catches both inline styles and classes)
+          if (mutation.attributeName === 'style' || mutation.attributeName === 'class') {
+            const style = window.getComputedStyle(target);
+            const classes = target.className || '';
 
-          // If class was changed to hide it (e.g. adding prodigy-hidden to indicator)
-          const classes = target.className || '';
-          const isClassHidden = classes.includes('prodigy-hidden') && !target.id.includes('widget');
+            const isStyleHidden = style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0;
+            const isClassHidden = classes.includes('prodigy-hidden') && !target.id.includes('widget');
 
-          if (isStyleHidden || isClassHidden) {
-            detectedTampering = true;
-            tamperDetails = `Hid proctor element: #${target.id || target.className}`;
+            if (isStyleHidden || isClassHidden) {
+              detectedTampering = true;
+              tamperDetails = `Hid proctor element: #${target.id || target.className}`;
+            }
           }
         }
-        
-        // Also check if chatbot launcher or widget had prodigy-hidden-force removed while chatbotDuringExam is false
+
+        // 3. Special Chatbot enforcement: Check if unhidden maliciously
         if (target.id === 'prodigy-chat-launcher' || target.id === 'prodigy-chat-widget') {
           chrome.storage.local.get(['chatbotDuringExam'], (res) => {
             if (!res.chatbotDuringExam) {
@@ -543,55 +677,56 @@ function startTamperMonitor() {
                   type: 'REPORT_VIOLATION',
                   reason: `Tampering detected: Attempted to reveal Socratic AI chatbot`
                 });
-                // Put it back
+                // Force it back to hidden
                 target.classList.add('prodigy-hidden-force');
               }
             }
           });
         }
       }
-    }
+    } // End of mutations loop
 
+    // If tampering was flagged anywhere during this mutation batch, take action here
     if (detectedTampering) {
-      // Disconnect observer temporarily to prevent infinite loop while recreating elements
-      tamperObserver.disconnect();
-      
-      console.warn("Prodigy Shield: Tampering detected!", tamperDetails);
-      safeSendMessage({
-        type: 'REPORT_VIOLATION',
-        reason: `Tampering detected: ${tamperDetails}`
-      });
+  // Disconnect observer temporarily to prevent infinite loop while recreating elements
+  tamperObserver.disconnect();
 
-      // Restore elements
-      if (localExamActive) {
-        showActiveIndicator();
-        
-        if (!document.fullscreenElement && !document.getElementById('prodigy-lockout-overlay') && isQuestionDivPresent()) {
-          chrome.storage.local.get(['requireFullscreen'], (res) => {
-            if (res.requireFullscreen !== false) {
-              showFullscreenRequiredModal();
-            }
-          });
-        }
-      }
-
-      // Reconnect observer
-      tamperObserver.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['style', 'class']
-      });
-    }
+  console.warn("Prodigy Shield: Tampering detected!", tamperDetails);
+  safeSendMessage({
+    type: 'REPORT_VIOLATION',
+    reason: `Tampering detected: ${tamperDetails}`
   });
 
-  // Start observing the body
+  // Restore elements
+  if (localExamActive) {
+    showActiveIndicator();
+
+    if (!document.fullscreenElement && !isSessionPaused() && isQuestionDivPresent()) {
+      chrome.storage.local.get(['requireFullscreen'], (res) => {
+        if (res.requireFullscreen !== false) {
+          showFullscreenRequiredModal();
+        }
+      });
+    }
+  }
+
+  // Reconnect observer
   tamperObserver.observe(document.body, {
     childList: true,
     subtree: true,
     attributes: true,
     attributeFilter: ['style', 'class']
   });
+}
+});
+
+// Start observing the body
+tamperObserver.observe(document.body, {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  attributeFilter: ['style', 'class']
+});
 }
 
 function stopTamperMonitor() {
@@ -611,9 +746,17 @@ function startExamLocal(initialViolations = 0) {
   wasFullscreen = !!document.fullscreenElement;
 
   chrome.storage.local.get([
-    'copyPasteAction', 'noRestrictions', 'requireFullscreen', 
-    'blockDevTools', 'blockRightClick', 'chatbotDuringExam'
+    'copyPasteAction', 'noRestrictions', 'requireFullscreen',
+    'blockDevTools', 'blockTabSwitch', 'blockRightClick', 'chatbotDuringExam',
+    'limitExits', 'maxExits'
   ], (result) => {
+    localNoRestrictions = !!result.noRestrictions;
+    localLimitExits = result.limitExits === true;
+    localMaxExits = (typeof result.maxExits === 'number' && result.maxExits > 0) ? result.maxExits : 3;
+    localRequireFullscreen = result.requireFullscreen !== false;
+    localBlockDevTools = result.blockDevTools !== false;
+    localBlockTabSwitch = result.blockTabSwitch !== false;
+    localBlockRightClick = result.blockRightClick !== false;
     // Hide AI Chatbot launcher and panels during an active exam session unless chatbotDuringExam is enabled
     if (!result.chatbotDuringExam) {
       if (chatLauncher) chatLauncher.classList.add('prodigy-hidden-force');
@@ -624,18 +767,8 @@ function startExamLocal(initialViolations = 0) {
     if (result.noRestrictions) {
       showActiveIndicator();
       updateShieldHealth('Secure');
-      
-      const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
-      const username = getStudentName();
-      chrome.storage.local.get(['violations', 'lockouts'], (res) => {
-        const flags = res.violations || 0;
-        const locks = res.lockouts || 0;
-        safeFetch(`${origin}/api/session-status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, status: 'Active Exam', flags, locks })
-        }).catch(err => console.log('Proctor sync status error:', err));
-      });
+
+      syncSessionStatus('Active Exam');
       return;
     }
 
@@ -664,23 +797,13 @@ function startExamLocal(initialViolations = 0) {
     startTamperMonitor();
 
     // Notify server of active proctor session
-    const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
-    const username = getStudentName();
-    chrome.storage.local.get(['violations', 'lockouts'], (res) => {
-      const flags = res.violations || 0;
-      const locks = res.lockouts || 0;
-      safeFetch(`${origin}/api/session-status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, status: 'Active Exam', flags, locks })
-      }).catch(err => console.log('Proctor sync status error:', err));
-    });
+    syncSessionStatus('Active Exam');
 
     if (initialViolations > 0) {
       showViolationOverlay(initialViolations, 'Exam session restored with existing flags.');
     }
 
-    if (result.requireFullscreen !== false && !document.fullscreenElement && !document.getElementById('prodigy-lockout-overlay') && isQuestionDivPresent()) {
+    if (result.requireFullscreen !== false && !document.fullscreenElement && !isSessionPaused() && isQuestionDivPresent()) {
       showFullscreenRequiredModal();
     }
   });
@@ -719,7 +842,7 @@ function stopExamLocal() {
     document.exitFullscreen().catch(err => console.log('Fullscreen exit error:', err));
   }
 
-  hideActiveIndicator();
+  forceHideAllIndicators({ syncIdle: false });
 
   if (overlayElement) {
     overlayElement.classList.add('prodigy-hidden');
@@ -728,16 +851,10 @@ function stopExamLocal() {
   hideFullscreenRequiredModal();
 
   // Notify server that the session has ended cleanly
-  const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
-  const username = getStudentName();
-  safeFetch(`${origin}/api/session-status`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, status: 'Idle' })
-  }).catch(err => console.log('Proctor sync status error:', err));
+  syncSessionStatus('Idle');
 }
 
-function forceHideAllIndicators() {
+function forceHideAllIndicators(options = {}) {
   localExamActive = false;
   stopTamperMonitor();
   stopUrlMonitor();
@@ -775,19 +892,15 @@ function forceHideAllIndicators() {
   }
 
   // Notify server that indicators are cleared
-  const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
-  const username = getStudentName();
-  safeFetch(`${origin}/api/session-status`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, status: 'Idle' })
-  }).catch(err => console.log('Proctor sync status error:', err));
+  if (options.syncIdle !== false) {
+    syncSessionStatus('Idle');
+  }
 }
 
 function restoreExamSession(result) {
   const now = Date.now();
   if (result.lockoutExpiry && now < result.lockoutExpiry) {
-    startExamLocal(result.violations || 0);
+    startExamLocal(0);
     const remaining = Math.ceil((result.lockoutExpiry - now) / 1000);
     showLockoutOverlay(result.violations || 0, remaining);
   } else {
@@ -801,6 +914,8 @@ function restoreExamSession(result) {
 function handleKeyDown(e) {
   if (isContextInvalidated()) return;
   if (!localExamActive) return;
+  if (localNoRestrictions) return;
+  if (isSessionPaused()) return;
   const key = e.key;
   const ctrl = e.ctrlKey;
   const shift = e.shiftKey;
@@ -822,6 +937,8 @@ function handleKeyDown(e) {
   }
 
   if (reason) {
+    const isDevToolsShortcut = reason.includes('Developer Tools') || reason.includes('Source');
+    if (isDevToolsShortcut && !localBlockDevTools) return;
     e.preventDefault();
     e.stopPropagation();
     safeSendMessage({ type: 'REPORT_VIOLATION', reason });
@@ -831,16 +948,16 @@ function handleKeyDown(e) {
 function handleContextMenu(e) {
   if (isContextInvalidated()) return;
   if (!localExamActive) return;
-  chrome.storage.local.get(['blockRightClick'], (res) => {
-    if (res.blockRightClick === false) return;
-    e.preventDefault();
-    e.stopPropagation();
-  });
+  if (localNoRestrictions || !localBlockRightClick) return;
+  if (isSessionPaused()) return;
+  e.preventDefault();
+  e.stopPropagation();
 }
 
 function handleCopy(e) {
   if (isContextInvalidated()) return;
   if (!localExamActive) return;
+  if (isSessionPaused()) return;
   if (localCopyPasteAction !== 'allow') {
     e.preventDefault();
     if (localCopyPasteAction === 'flag') {
@@ -857,6 +974,7 @@ function handleCopy(e) {
 function handleCut(e) {
   if (isContextInvalidated()) return;
   if (!localExamActive) return;
+  if (isSessionPaused()) return;
   if (localCopyPasteAction !== 'allow') {
     e.preventDefault();
     if (localCopyPasteAction === 'flag') {
@@ -873,6 +991,7 @@ function handleCut(e) {
 function handlePaste(e) {
   if (isContextInvalidated()) return;
   if (!localExamActive) return;
+  if (isSessionPaused()) return;
   if (localCopyPasteAction !== 'allow') {
     e.preventDefault();
     if (localCopyPasteAction === 'flag') {
@@ -889,6 +1008,8 @@ function handlePaste(e) {
 function handleBlur() {
   if (isContextInvalidated()) return;
   if (!localExamActive || isUnloading) return;
+  if (localNoRestrictions || !localBlockTabSwitch) return;
+  if (isSessionPaused()) return;
   updateShieldHealth('Warning');
   safeSendMessage({
     type: 'REPORT_VIOLATION',
@@ -899,7 +1020,9 @@ function handleBlur() {
 function handleVisibilityChange() {
   if (isContextInvalidated()) return;
   if (!localExamActive || isUnloading) return;
+  if (isSessionPaused()) return;
   if (document.visibilityState === 'hidden') {
+    if (localNoRestrictions || !localBlockTabSwitch) return;
     updateShieldHealth('Warning');
     safeSendMessage({
       type: 'REPORT_VIOLATION',
@@ -911,9 +1034,10 @@ function handleVisibilityChange() {
 function handleFullscreenChange() {
   if (isContextInvalidated()) return;
   if (!localExamActive || isUnloading) return;
-  chrome.storage.local.get(['requireFullscreen'], (res) => {
-    if (res.requireFullscreen === false) return;
-    
+  if (localNoRestrictions || !localRequireFullscreen) return;
+  if (isSessionPaused()) return;
+  {
+
     const isNowFullscreen = !!document.fullscreenElement;
     if (!isNowFullscreen && wasFullscreen) {
       updateShieldHealth('Fullscreen Required');
@@ -922,12 +1046,12 @@ function handleFullscreenChange() {
         reason: 'Fullscreen exited manually'
       });
 
-      if (!document.getElementById('prodigy-lockout-overlay') && isQuestionDivPresent()) {
+      if (!isSessionPaused() && isQuestionDivPresent()) {
         showFullscreenRequiredModal();
       }
     } else if (!isNowFullscreen) {
       updateShieldHealth('Fullscreen Required');
-      if (!document.getElementById('prodigy-lockout-overlay') && isQuestionDivPresent()) {
+      if (!isSessionPaused() && isQuestionDivPresent()) {
         showFullscreenRequiredModal();
       }
     } else {
@@ -935,12 +1059,13 @@ function handleFullscreenChange() {
       hideFullscreenRequiredModal();
     }
     wasFullscreen = isNowFullscreen;
-  });
+  }
 }
 
 function handleExamNavigationBlocker(event) {
   if (isContextInvalidated()) return;
   if (!localExamActive) return;
+  if (localNoRestrictions) return;
 
   const target = event.target;
   if (!target) return;
@@ -951,6 +1076,21 @@ function handleExamNavigationBlocker(event) {
   if (link) {
     const href = link.getAttribute('href');
     const isExitOrSubmit = link.textContent.toLowerCase().includes('exit') || link.textContent.toLowerCase().includes('submit');
+
+    if (isExitOrSubmit && isActionConfirmed) {
+      // Allow the programmatic click to pass through to the website's own handler.
+      return;
+    }
+
+    if (isExitOrSubmit) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      const isSubmit = link.textContent.toLowerCase().includes('submit');
+      promptEndExam(isSubmit ? 'submit' : 'exit', link);
+      return;
+    }
 
     if (href && !href.startsWith('#') && !href.startsWith('javascript:') && !isExitOrSubmit) {
       event.preventDefault();
@@ -1014,7 +1154,7 @@ function updateShieldHealth(status) {
   if (!badge) return;
 
   badge.className = 'prodigy-health-badge';
-  
+
   if (status === 'Secure') {
     badge.classList.add('secure');
     badge.textContent = 'Secure';
@@ -1047,6 +1187,9 @@ function hideActiveIndicator() {
 }
 
 function showViolationOverlay(violationsCount, reason) {
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(err => console.log('Fullscreen exit error during violation warning:', err));
+  }
   if (!overlayElement) {
     overlayElement = document.createElement('div');
     overlayElement.id = 'prodigy-anti-cheat-overlay';
@@ -1095,9 +1238,15 @@ function showViolationOverlay(violationsCount, reason) {
   }
 }
 
-function showLockoutOverlay(violationsCount, duration) {
+function showLockoutOverlay(violationsCount, duration, opts) {
   updateShieldHealth('Lockout Active');
   const lockoutDuration = duration || 10;
+  opts = opts || {};
+  const lockoutTitle = opts.title || 'SESSION PAUSED';
+  const lockoutDescription = opts.description || `Your exam is temporarily paused because you reached <strong>${violationsCount} security flags</strong>. Take a moment to refocus.`;
+  const lockoutStatLabel = opts.statLabel || 'TOTAL FLAGS';
+  const lockoutStatValue = (opts.statValue !== undefined && opts.statValue !== null) ? opts.statValue : violationsCount;
+  const lockoutReason = opts.reason || (violationsCount ? 'Security violations detected' : 'Exam rule enforcement');
   const LOCKOUT_TIPS = [
     "Alt+Tab / clicking away registers focus loss flags.",
     "Exiting fullscreen mode manually suspends access.",
@@ -1110,65 +1259,75 @@ function showLockoutOverlay(violationsCount, duration) {
 
   if (document.getElementById('prodigy-lockout-overlay')) return;
 
-  const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
-  const username = getStudentName();
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(err => console.log('Fullscreen exit error during lockout:', err));
+  }
 
-  // Send lockout status to server proctor registry
-  chrome.storage.local.get(['violations', 'lockouts'], (res) => {
+  const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
+
+  // Re-affirm this lockout to the proctor server whenever the overlay is shown
+  // (including on page-load restore). The authoritative, counted registration
+  // happens in the background worker the instant a lockout triggers; this POST
+  // is a self-healing safety net so that if the server row was wiped externally
+  // (e.g. a hard reset of the exam app) the student still shows as locked. It is
+  // flagged reaffirm:true so the server never double-counts a lockout, and it
+  // sends the SAME stored lockoutExpiry the background used so both posts refer
+  // to the same lock window. The server preserves any pending appeal.
+  chrome.storage.local.get(['violations', 'examSessionId', 'lockoutExpiry'], (res) => {
+    const username = getStudentName();
     const flags = res.violations || violationsCount || 0;
-    const locks = res.lockouts || 0;
+    const sessionId = res.examSessionId || '';
+    const expiry = res.lockoutExpiry || (Date.now() + lockoutDuration * 1000);
     safeFetch(`${origin}/api/lockout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, lockoutExpiry: Date.now() + lockoutDuration * 1000, flags, locks })
+      body: JSON.stringify({ username, lockoutExpiry: expiry, flags, sessionId, reaffirm: true, browserSuffix: getBrowserSuffixOnly() })
     }).catch(err => console.log('Proctor lockout sync error:', err));
   });
 
   const lockoutEl = document.createElement('div');
   lockoutEl.id = 'prodigy-lockout-overlay';
   lockoutEl.className = 'prodigy-lockout-overlay';
+  const reviewedStr = new Date().toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const reactivateStr = new Date(Date.now() + lockoutDuration * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   lockoutEl.innerHTML = `
-    <div class="prodigy-lockout-modal">
-      <div class="prodigy-lockout-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <h2 class="prodigy-lockout-title">SESSION PAUSED</h2>
-      <p class="prodigy-lockout-description">Your exam is temporarily paused because you reached <strong>${violationsCount} security flags</strong>. Take a moment to refocus.</p>
-      
-      <div class="prodigy-lockout-stat">
-        <span class="prodigy-lockout-stat-label">TOTAL FLAGS</span>
-        <span class="prodigy-lockout-stat-value">${violationsCount}</span>
+    <div class="prodigy-lockout-modal" style="max-width: 620px !important; width: 90% !important; box-sizing: border-box !important; background: #2b2b2b !important; border: 1px solid #3d3d3d !important; border-radius: 8px !important; padding: 36px 40px !important; box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important; color: #cfcfcf !important; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important; text-align: left !important;">
+      <div id="prodigy-lockout-notice-view">
+      <h2 style="margin: 0 0 18px !important; font-size: 30px !important; font-weight: 700 !important; color: #f5f5f5 !important; letter-spacing: 0.2px !important;">${lockoutTitle}</h2>
+
+      <p style="margin: 0 0 16px !important; font-size: 14px !important; line-height: 1.6 !important; color: #bcbcbc !important;">${lockoutDescription}</p>
+
+      <p style="margin: 0 0 8px !important; font-size: 13px !important; color: #9a9a9a !important;"><strong style="color: #d6d6d6 !important;">Reviewed:</strong> ${reviewedStr}</p>
+
+      <p style="margin: 0 0 18px !important; font-size: 13px !important; line-height: 1.6 !important; color: #9a9a9a !important;"><strong style="color: #d6d6d6 !important;">Proctor Note:</strong> Prodigy Shield does not permit leaving the secured exam environment beyond the number of exits allowed for this assessment.</p>
+
+      <div style="border: 1px solid #474747 !important; border-radius: 6px !important; padding: 16px 18px !important; margin: 0 0 20px !important; background: #242424 !important;">
+        <p style="margin: 0 0 8px !important; font-size: 13px !important; color: #bcbcbc !important;"><strong style="color: #f5f5f5 !important;">Reason:</strong> ${lockoutReason}</p>
+        <p style="margin: 0 !important; font-size: 13px !important; color: #bcbcbc !important;"><strong style="color: #f5f5f5 !important;">${lockoutStatLabel}:</strong> ${lockoutStatValue}</p>
       </div>
 
-      <div class="prodigy-lockout-tips-box">
-        <div class="prodigy-lockout-tips-header">
-          <span class="prodigy-lockout-tips-title">Proctor Tip: What triggers flags?</span>
-          <button id="prodigy-lockout-tip-next" class="prodigy-lockout-tip-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width:10px; height:10px;">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
-          </button>
-        </div>
-        <div id="prodigy-lockout-tip-content" class="prodigy-lockout-tip-text">
-          ${LOCKOUT_TIPS[0]}
+      <p style="margin: 0 0 12px !important; font-size: 13px !important; line-height: 1.6 !important; color: #9a9a9a !important;">Please abide by the exam rules so Prodigy Shield can keep this assessment fair for everyone.</p>
+
+      <p style="margin: 0 0 22px !important; font-size: 13px !important; line-height: 1.6 !important; color: #9a9a9a !important;">Your exam session has been locked. It will re-activate automatically at <strong style="color: #d6d6d6 !important;">${reactivateStr}</strong>.</p>
+
+        <div style="border-top: 1px solid #3d3d3d !important; padding-top: 18px !important; margin: 0 !important;">
+          <p style="margin: 0 0 12px !important; font-size: 13px !important; color: #9a9a9a !important;">Believe this lockout is a mistake? You can appeal to your administrator for review.</p>
+          <button id="prodigy-lockout-appeal-open-btn" style="background: #3a3a3a !important; color: #f5f5f5 !important; border: 1px solid #565656 !important; padding: 9px 22px !important; font-size: 13px !important; border-radius: 4px !important; cursor: pointer !important; font-family: inherit !important;">Appeal this lockout</button>
         </div>
       </div>
 
-      <div class="prodigy-lockout-countdown-wrap">
-        <span class="prodigy-lockout-countdown-label">Resuming in</span>
-        <span id="prodigy-lockout-timer" class="prodigy-lockout-timer">${lockoutDuration}</span>
-        <span class="prodigy-lockout-countdown-label">seconds</span>
+      <div id="prodigy-lockout-appeal-view" style="display: none !important;">
+        <h2 style="margin: 0 0 8px !important; font-size: 26px !important; font-weight: 700 !important; color: #f5f5f5 !important; letter-spacing: 0.2px !important;">Submit an Appeal</h2>
+        <div id="prodigy-lockout-request-wrap" style="border-top: 1px solid #3d3d3d !important; padding-top: 18px !important; margin-top: 16px !important;">
+          <p style="margin: 0 0 10px !important; font-size: 13px !important; line-height: 1.6 !important; color: #9a9a9a !important;">Explain what happened below. An administrator will review your reason and decide whether to unlock your exam.</p>
+          <textarea id="prodigy-lockout-appeal-text" placeholder="Explain your reason here (e.g. my internet disconnected, the page reloaded by accident)..." style="width: 100% !important; box-sizing: border-box !important; min-height: 96px !important; resize: vertical !important; background: #242424 !important; color: #eaeaea !important; border: 1px solid #565656 !important; border-radius: 5px !important; padding: 10px 12px !important; font-size: 13px !important; font-family: inherit !important; line-height: 1.5 !important; outline: none !important;"></textarea>
+          <div style="display: flex !important; align-items: center !important; gap: 12px !important; margin-top: 12px !important; flex-wrap: wrap !important;">
+            <button id="prodigy-lockout-request-btn" style="background: #3a3a3a !important; color: #f5f5f5 !important; border: 1px solid #565656 !important; padding: 9px 22px !important; font-size: 13px !important; border-radius: 4px !important; cursor: pointer !important; font-family: inherit !important;">Submit Appeal</button>
+            <button id="prodigy-lockout-appeal-back-btn" style="background: transparent !important; color: #bcbcbc !important; border: 1px solid #454545 !important; padding: 9px 18px !important; font-size: 13px !important; border-radius: 4px !important; cursor: pointer !important; font-family: inherit !important;">Back</button>
+            <span id="prodigy-lockout-appeal-status" style="font-size: 12px !important; color: #9a9a9a !important; line-height: 1.4 !important;"></span>
+          </div>
+        </div>
       </div>
-
-      <div id="prodigy-lockout-request-wrap" style="text-align: center; margin-top: 15px; margin-bottom: 5px;">
-        <button id="prodigy-lockout-request-btn" class="prodigy-btn" style="background: #e59866 !important; width: auto !important; padding: 8px 18px !important; font-size: 12px !important; margin: 0 auto !important; border-radius: 4px !important; cursor: pointer !important;">
-          Request Administrator Unlock
-        </button>
-      </div>
-      
-      <p class="prodigy-lockout-contact">&#9888;&#65039; Further violations will trigger longer suspensions.</p>
     </div>
   `;
   document.body.appendChild(lockoutEl);
@@ -1198,11 +1357,16 @@ function showLockoutOverlay(violationsCount, duration) {
           <circle cx="50" cy="50" r="1.5" class="prodigy-clock-pin-inner" />
         </svg>
       </div>
-      <div class="prodigy-lockout-clock-time" id="prodigy-lockout-clock-time">${lockoutDuration}</div>
+      <div style="margin-top: 6px !important; text-align: center !important;">
+        <span id="prodigy-lockout-clock-time" style="display: inline-block !important; background: #000000 !important; color: #ff6b81 !important; font-size: 13px !important; font-weight: 700 !important; letter-spacing: 0.6px !important; font-variant-numeric: tabular-nums !important; padding: 3px 8px !important; border-radius: 6px !important; line-height: 1.1 !important;">${formatClockTimeParts(lockoutDuration).value}</span>
+        <div id="prodigy-lockout-clock-unit" style="margin-top: 3px !important; font-size: 10px !important; font-weight: 600 !important; letter-spacing: 1px !important; text-transform: uppercase !important; color: #ff6b81 !important; text-align: center !important; background: none !important;">${formatClockTimeParts(lockoutDuration).unit}</div>
+      </div>
     </div>
   `;
+  ensureClockAnimationStyles();
   document.body.appendChild(clockEl);
-  makeDraggable(clockEl, clockEl.querySelector('.prodigy-lockout-clock-handle'));
+  // Clock is intentionally NOT draggable.
+  setupClockSeeThrough(clockEl);
 
   let currentTipIndex = 0;
   const tipContentEl = lockoutEl.querySelector('#prodigy-lockout-tip-content');
@@ -1227,58 +1391,114 @@ function showLockoutOverlay(violationsCount, duration) {
   }
 
   if (requestBtn) {
+    const appealText = lockoutEl.querySelector('#prodigy-lockout-appeal-text');
+    const appealStatus = lockoutEl.querySelector('#prodigy-lockout-appeal-status');
     requestBtn.addEventListener('click', () => {
-      safeFetch(`${origin}/api/unlock-request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-      })
-      .then(() => {
-        requestBtn.disabled = true;
-        requestBtn.textContent = 'Unlock Requested';
-        requestBtn.style.setProperty('background', '#7f8c8d', 'important');
-        requestBtn.style.setProperty('cursor', 'not-allowed', 'important');
-        showToastNotification('Unlock request sent to administrator.');
-      })
-      .catch(err => console.error('Unlock request post error:', err));
+      const reasonText = appealText ? appealText.value.trim() : '';
+      if (!reasonText) {
+        if (appealStatus) {
+          appealStatus.textContent = 'Please type a reason before submitting your appeal.';
+          appealStatus.style.setProperty('color', '#ff6b81', 'important');
+        }
+        if (appealText) appealText.focus();
+        return;
+      }
+      chrome.storage.local.get(['examSessionId'], (res) => {
+        const sessionId = res.examSessionId || '';
+        const currentUsername = getStudentName();
+        safeFetch(`${origin}/api/unlock-request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: currentUsername, sessionId, appealReason: reasonText, browserSuffix: getBrowserSuffixOnly() })
+        })
+          .then(() => {
+            requestBtn.disabled = true;
+            requestBtn.textContent = 'Appeal Submitted';
+            requestBtn.style.setProperty('background', '#7f8c8d', 'important');
+            requestBtn.style.setProperty('cursor', 'not-allowed', 'important');
+            if (appealText) {
+              appealText.disabled = true;
+              appealText.style.setProperty('opacity', '0.6', 'important');
+            }
+            if (appealStatus) {
+              appealStatus.textContent = 'Your appeal was sent to the administrator for review.';
+              appealStatus.style.setProperty('color', '#7ed6a5', 'important');
+            }
+            showToastNotification('Appeal sent to administrator for review.');
+          })
+          .catch(err => console.error('Appeal post error:', err));
+      });
+    });
+  }
+
+  // Two-step modal: notice view <-> appeal view
+  const noticeView = lockoutEl.querySelector('#prodigy-lockout-notice-view');
+  const appealView = lockoutEl.querySelector('#prodigy-lockout-appeal-view');
+  const appealOpenBtn = lockoutEl.querySelector('#prodigy-lockout-appeal-open-btn');
+  const appealBackBtn = lockoutEl.querySelector('#prodigy-lockout-appeal-back-btn');
+  const appealTextEl = lockoutEl.querySelector('#prodigy-lockout-appeal-text');
+  if (appealOpenBtn) {
+    appealOpenBtn.addEventListener('click', () => {
+      if (noticeView) noticeView.style.setProperty('display', 'none', 'important');
+      if (appealView) appealView.style.setProperty('display', 'block', 'important');
+      if (appealTextEl) appealTextEl.focus();
+    });
+  }
+  if (appealBackBtn) {
+    appealBackBtn.addEventListener('click', () => {
+      if (appealView) appealView.style.setProperty('display', 'none', 'important');
+      if (noticeView) noticeView.style.setProperty('display', 'block', 'important');
     });
   }
 
   let remaining = lockoutDuration;
-  const timerEl = lockoutEl.querySelector('#prodigy-lockout-timer');
 
   const countdown = setInterval(() => {
     remaining--;
-    if (timerEl) timerEl.textContent = remaining;
 
     const clockTimeEl = document.getElementById('prodigy-lockout-clock-time');
-    if (clockTimeEl) clockTimeEl.textContent = remaining;
+    const clockUnitEl = document.getElementById('prodigy-lockout-clock-unit');
+    if (clockTimeEl || clockUnitEl) {
+      const clockParts = formatClockTimeParts(remaining);
+      if (clockTimeEl) clockTimeEl.textContent = clockParts.value;
+      if (clockUnitEl) clockUnitEl.textContent = clockParts.unit;
+    }
 
     if (remaining <= 0) {
       clearInterval(countdown);
       if (clockEl) safeRemoveElement(clockEl);
-      const countdownWrap = lockoutEl.querySelector('.prodigy-lockout-countdown-wrap');
-      const requestWrap = lockoutEl.querySelector('#prodigy-lockout-request-wrap');
-      if (requestWrap) requestWrap.remove(); // Remove unlock request when countdown finishes
-      
-      if (countdownWrap) {
-        countdownWrap.innerHTML = `
-          <button id="prodigy-lockout-resume-btn" class="prodigy-btn" style="background: #0e639c !important; width: auto !important; padding: 10px 24px !important; margin: 10px auto !important; font-size: 13px !important; border-radius: 4px !important;">
-            Resume Exam
-          </button>
-        `;
-        
-        const resumeBtn = countdownWrap.querySelector('#prodigy-lockout-resume-btn');
+      // Countdown finished: return to notice view and drop the appeal UI
+      const noticeViewEnd = lockoutEl.querySelector('#prodigy-lockout-notice-view');
+      if (noticeViewEnd) noticeViewEnd.style.setProperty('display', 'block', 'important');
+      const appealViewEnd = lockoutEl.querySelector('#prodigy-lockout-appeal-view');
+      if (appealViewEnd) appealViewEnd.remove();
+      const appealOpenBtnEnd = lockoutEl.querySelector('#prodigy-lockout-appeal-open-btn');
+      if (appealOpenBtnEnd && appealOpenBtnEnd.parentElement) appealOpenBtnEnd.parentElement.remove();
+
+      const resumeHost = lockoutEl.querySelector('.prodigy-lockout-modal') || lockoutEl;
+      const resumeWrap = document.createElement('div');
+      resumeWrap.style.textAlign = 'center';
+      resumeWrap.innerHTML = `
+        <button id="prodigy-lockout-resume-btn" class="prodigy-btn" style="background: #0e639c !important; width: auto !important; padding: 10px 24px !important; margin: 10px auto !important; font-size: 13px !important; border-radius: 4px !important;">
+          Resume Exam
+        </button>
+      `;
+      resumeHost.appendChild(resumeWrap);
+
+      {
+        const resumeBtn = resumeWrap.querySelector('#prodigy-lockout-resume-btn');
         if (resumeBtn) {
           resumeBtn.addEventListener('click', () => {
-            if (lockoutPollInterval) clearInterval(lockoutPollInterval);
+            clearLockoutPoll();
             chrome.storage.local.set({ lockoutExpiry: 0 });
+            syncSessionStatus('Active Exam');
             clearInterval(tipRotationInterval);
-            
+
             const activeClock = document.getElementById('prodigy-lockout-clock-widget');
             if (activeClock) safeRemoveElement(activeClock);
-            
+
             safeRemoveElement(lockoutEl);
+            syncSessionStatus('Active Exam');
 
             // Only enter fullscreen if we are actually still on the exam question page.
             // If they are on the landing or home page, terminate the exam mode completely.
@@ -1295,20 +1515,42 @@ function showLockoutOverlay(violationsCount, duration) {
     }
   }, 1000);
 
-  // Poll server to check if admin reactivated the user
+  // Poll server to check if admin reactivated the user.
+  // IMPORTANT: only release EARLY when the server has first confirmed this
+  // lockout as active and then reports it cleared (a genuine admin unlock).
+  // If the server never registered the lock (POST failed, DB error, or the row
+  // isn't active yet), a bare isBlocked:false must NOT free the student — the
+  // local countdown stays the source of truth. This is what previously lifted
+  // DevTools-triggered lockouts after ~1 second without any admin action.
+  let serverConfirmedLock = false;
   lockoutPollInterval = setInterval(() => {
-    safeFetch(`${origin}/api/check-lockout?username=${encodeURIComponent(username)}`)
+    const currentUsername = getStudentName();
+    const suffix = getBrowserSuffixOnly();
+    safeFetch(`${origin}/api/check-lockout?username=${encodeURIComponent(currentUsername)}&browserSuffix=${encodeURIComponent(suffix)}`)
       .then(data => {
-        if (!data.isBlocked) {
+        if (data && data.isBlocked) {
+          serverConfirmedLock = true;
+          return;
+        }
+
+        // Server reports not blocked. Only honor this as an early release if the
+        // server had previously confirmed the lock (i.e. admin reactivated it).
+        // Otherwise the local countdown governs the lockout duration.
+        if (!serverConfirmedLock) {
+          return;
+        }
+
+        {
           clearInterval(lockoutPollInterval);
           clearInterval(countdown);
           clearInterval(tipRotationInterval);
-          
+
           chrome.storage.local.set({ lockoutExpiry: 0 });
-          
+          syncSessionStatus('Active Exam');
+
           const activeClock = document.getElementById('prodigy-lockout-clock-widget');
           if (activeClock) safeRemoveElement(activeClock);
-          
+
           if (lockoutEl && document.body.contains(lockoutEl)) {
             safeRemoveElement(lockoutEl);
           }
@@ -1442,7 +1684,27 @@ function showCloseDevToolsWarningModal() {
 }
 
 function showFullscreenRequiredModal() {
+  // If we're actually in fullscreen, never show the prompt (guards against races
+  // where an enforcement tick fires while fullscreen is still engaging).
+  if (document.fullscreenElement) {
+    hideFullscreenRequiredModal();
+    return;
+  }
+
+  if (isSessionPaused()) {
+    hideFullscreenRequiredModal();
+    return;
+  }
+
   let overlay = document.getElementById('prodigy-fullscreen-required-overlay');
+
+  // If the prompt is already on screen, leave it as-is. Rebuilding its innerHTML
+  // on every enforcement tick / mutation / fullscreenchange is what made it
+  // "keep popping" (flicker + focus steal). Only build it once per appearance.
+  if (overlay && !overlay.classList.contains('prodigy-hidden')) {
+    return;
+  }
+
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'prodigy-fullscreen-required-overlay';
@@ -1563,94 +1825,134 @@ function showToastNotification(message) {
 }
 
 function runPreflightChecks(callback) {
-  const checks = [
-    { id: 'fullscreen', label: 'Fullscreen Available', passed: false, advice: 'Fullscreen is blocked by your browser settings. Please enable it in site settings.' },
-    { id: 'maximized', label: 'Browser Window Maximized', passed: false, advice: 'Please maximize your browser window or close side panels.' },
-    { id: 'devtools', label: 'DevTools / Side Panel Closed', passed: false, advice: 'Please close Developer Tools or Side Panel.' },
-    { id: 'background', label: 'Extension Background Worker Responding', passed: false, advice: 'Extension connection lost. Please reload the extension.' },
-    { id: 'config', label: 'Remote Config Synced', passed: false, advice: 'Failed to retrieve remote proctor config.' },
-    { id: 'tab', label: 'Exam Tab Recognized', passed: false, advice: 'Background worker could not trace active tab.' },
-    { id: 'question', label: 'Question Area Detected', passed: false, advice: 'Not on a valid exam landing page.' },
-    { id: 'lockout', label: 'No Active Lockout', passed: false, advice: 'You are currently locked out of this session.' },
-    { id: 'clipboard', label: 'Clipboard Policy Loaded', passed: false, advice: 'Proctor copy/paste policy not loaded.' },
-    { id: 'navlock', label: 'Navigation Lock Ready', passed: false, advice: 'Listeners not ready.' }
-  ];
+  chrome.storage.local.get([
+    'requireFullscreen',
+    'blockDevTools',
+    'blockTabSwitch',
+    'noRestrictions',
+    'copyPasteAction'
+  ], (res) => {
+    const requireFullscreen = res.requireFullscreen !== false;
+    const blockDevTools = res.blockDevTools !== false;
+    const blockTabSwitch = res.blockTabSwitch !== false;
+    const noRestrictions = !!res.noRestrictions;
 
-  let completedCount = 0;
-  function checkDone() {
-    completedCount++;
-    if (completedCount === checks.length) {
-      callback(checks);
-    }
-  }
+    const checks = [
+      { id: 'fullscreen', label: 'Fullscreen Available', passed: false, advice: 'Fullscreen is blocked by your browser settings. Please enable it in site settings.' },
+      { id: 'maximized', label: 'Browser Window Maximized', passed: false, advice: 'Please maximize your browser window or close side panels.' },
+      { id: 'devtools', label: 'DevTools / Side Panel Closed', passed: false, advice: 'Please close Developer Tools or Side Panel.' },
+      { id: 'background', label: 'Extension Background Worker Responding', passed: false, advice: 'Extension connection lost. Please reload the extension.' },
+      { id: 'config', label: 'Remote Config Synced', passed: false, advice: 'Failed to retrieve remote proctor config.' },
+      { id: 'tab', label: 'Exam Tab Recognized', passed: false, advice: 'Background worker could not trace active tab.' },
+      { id: 'question', label: 'Question Area Detected', passed: false, advice: 'Not on a valid exam landing page.' },
+      { id: 'lockout', label: 'No Active Lockout', passed: false, advice: 'You are currently locked out of this session.' },
+      { id: 'clipboard', label: 'Clipboard Policy Loaded', passed: false, advice: 'Proctor copy/paste policy not loaded.' },
+      { id: 'navlock', label: 'Navigation Lock Ready', passed: false, advice: 'Listeners not ready.' }
+    ];
 
-  // 1. Fullscreen Available
-  checks[0].passed = document.fullscreenEnabled;
-  checkDone();
-
-  // 3. DevTools / Side Panel Closed
-  const DEVTOOLS_THRESHOLD = 160;
-  const isDevToolsOpen =
-    (window.outerWidth - window.innerWidth) > DEVTOOLS_THRESHOLD ||
-    (window.outerHeight - window.innerHeight) > DEVTOOLS_THRESHOLD;
-  checks[2].passed = !isDevToolsOpen;
-  checkDone();
-
-  // 4, 5, 6, 2. Background, Config, Tab Checks + Window Maximized Check via Ping message
-  safeSendMessage({ type: 'PING' }, (response) => {
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    
-    if (response && response.success) {
-      checks[3].passed = true; // Connection alive
-      checks[4].passed = !!response.config; // Config loaded
-      checks[5].passed = response.tabId !== undefined; // Tab recognized
-      
-      // Determine maximize state natively from chrome window manager if not mobile
-      if (isMobile) {
-        checks[1].passed = true;
-      } else if (response.isWindowMaximized !== undefined) {
-        checks[1].passed = response.isWindowMaximized;
-      } else {
-        // Fallback layout math
-        const isSnapped =
-          window.outerWidth < (window.screen.availWidth * 0.85) ||
-          window.outerHeight < (window.screen.availHeight * 0.85);
-        checks[1].passed = !isSnapped;
+    let completedCount = 0;
+    function checkDone() {
+      completedCount++;
+      if (completedCount === checks.length) {
+        callback(checks);
       }
-    } else {
-      checks[3].passed = false;
-      checks[4].passed = false;
-      checks[5].passed = false;
-      // Fallback layout math
-      const isSnapped = !isMobile && (
-        window.outerWidth < (window.screen.availWidth * 0.85) ||
-        window.outerHeight < (window.screen.availHeight * 0.85)
-      );
-      checks[1].passed = !isSnapped;
     }
-    
-    checkDone(); // check 1 (Window Maximized)
-    checkDone(); // check 3
-    checkDone(); // check 4
-    checkDone(); // check 5
+
+    // 1. Fullscreen Available (bypass if requireFullscreen is false or noRestrictions is true)
+    checks[0].passed = (!requireFullscreen || noRestrictions) ? true : document.fullscreenEnabled;
+    checkDone();
+
+    // 4, 5, 6, 2, 1. Background, Config, Tab, DevTools, and Maximize Checks via Ping message
+    safeSendMessage({ type: 'PING' }, (response) => {
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (response && response.success) {
+        checks[3].passed = true; // Connection alive
+        checks[4].passed = !!response.config; // Config loaded
+        checks[5].passed = response.tabId !== undefined; // Tab recognized
+
+        // Check if maximized
+        if (!blockTabSwitch || noRestrictions) {
+          checks[1].passed = true;
+        } else if (isMobile && !response.windowWidth) {
+          checks[1].passed = true;
+        } else if (response.isWindowMaximized !== undefined) {
+          checks[1].passed = response.isWindowMaximized;
+        } else {
+          const isSnapped =
+            window.outerWidth < (window.screen.availWidth * 0.85) ||
+            window.outerHeight < (window.screen.availHeight * 0.85);
+          checks[1].passed = !isSnapped;
+        }
+
+        // Check if DevTools is open (compare real window size vs viewport size to catch emulation & docking)
+        if (!blockDevTools || noRestrictions) {
+          checks[2].passed = true;
+        } else {
+          const DEVTOOLS_THRESHOLD = 120;
+          let isDevToolsOpen = false;
+          if (response.windowWidth && response.windowHeight) {
+            const diffWidth = response.windowWidth - window.innerWidth;
+            const diffHeight = response.windowHeight - window.innerHeight;
+            const isEmulated = Math.abs(window.outerWidth - response.windowWidth) > 20 ||
+                               Math.abs(window.outerHeight - response.windowHeight) > 20;
+            isDevToolsOpen = diffWidth > DEVTOOLS_THRESHOLD || diffHeight > DEVTOOLS_THRESHOLD || isEmulated;
+          } else {
+            isDevToolsOpen =
+              (window.outerWidth - window.innerWidth) > 160 ||
+              (window.outerHeight - window.innerHeight) > 160;
+          }
+          checks[2].passed = !isDevToolsOpen;
+        }
+      } else {
+        checks[3].passed = false;
+        checks[4].passed = false;
+        checks[5].passed = false;
+
+        if (!blockTabSwitch || noRestrictions) {
+          checks[1].passed = true;
+        } else {
+          const isSnapped = !isMobile && (
+            window.outerWidth < (window.screen.availWidth * 0.85) ||
+            window.outerHeight < (window.screen.availHeight * 0.85)
+          );
+          checks[1].passed = !isSnapped;
+        }
+
+        if (!blockDevTools || noRestrictions) {
+          checks[2].passed = true;
+        } else {
+          const isDevToolsOpen =
+            (window.outerWidth - window.innerWidth) > 160 ||
+            (window.outerHeight - window.innerHeight) > 160;
+          checks[2].passed = !isDevToolsOpen;
+        }
+      }
+
+      checkDone(); // check 1 (Window Maximized)
+      checkDone(); // check 2 (DevTools / Side Panel Closed)
+      checkDone(); // check 3 (Background worker)
+      checkDone(); // check 4 (Config synced)
+      checkDone(); // check 5 (Exam tab recognized)
+    });
+
+    // 7. Question Area Detected
+    checks[6].passed = noRestrictions ? true : (!!document.getElementById('start-btn') || document.body.innerText.includes('Diagnostic Exam'));
+    checkDone();
+
+    // 8. No Active Lockout
+    const now = Date.now();
+    checks[7].passed = noRestrictions ? true : !(localLockoutExpiry && now < localLockoutExpiry);
+    checkDone();
+
+    // 9. Clipboard Policy Loaded
+    checks[8].passed = noRestrictions ? true : !!res.copyPasteAction;
+    checkDone();
+
+    // 10. Navigation Lock Ready
+    checks[9].passed = true;
+    checkDone();
   });
-
-  // 7. Question Area Detected
-  checks[6].passed = !!document.getElementById('start-btn') || document.body.innerText.includes('Diagnostic Exam');
-  checkDone();
-
-  // 8. No Active Lockout
-  const now = Date.now();
-  checks[7].passed = !(localLockoutExpiry && now < localLockoutExpiry);
-  checkDone();
-
-  // 9. Clipboard Policy Loaded
-  checks[8].passed = !!localCopyPasteAction;
-  checkDone();
-
-  // 10. Navigation Lock Ready
-  checks[9].passed = true; // Click event listener is loaded and active
-  checkDone();
 }
 
 function showPreflightCheckModal(onSuccess) {
@@ -1658,11 +1960,16 @@ function showPreflightCheckModal(onSuccess) {
   if (overlay) return;
 
   let preflightPollInterval = null;
+  // SECURITY: authoritative pass/fail state kept in a closure the page cannot
+  // reach. The Start button's `disabled` attribute and styling live in the DOM
+  // and can be stripped from the console; this variable cannot be, so the click
+  // handler trusts THIS flag, never the DOM state.
+  let lastChecksPassed = false;
 
   overlay = document.createElement('div');
   overlay.id = 'prodigy-preflight-overlay';
   overlay.className = 'prodigy-overlay';
-  
+
   overlay.innerHTML = `
     <div class="prodigy-preflight-modal">
       <h2 class="prodigy-preflight-title">Security Preflight Check</h2>
@@ -1698,6 +2005,7 @@ function showPreflightCheckModal(onSuccess) {
     const container = document.getElementById('prodigy-preflight-list-container');
     if (!container) return;
 
+    lastChecksPassed = false;
     retryBtn.disabled = true;
     retryBtn.style.opacity = '0.5';
     startBtn.disabled = true;
@@ -1722,7 +2030,7 @@ function showPreflightCheckModal(onSuccess) {
 
           const itemEl = document.createElement('div');
           itemEl.className = `prodigy-preflight-item ${check.passed ? 'passed' : 'failed'}`;
-          
+
           let adviceHtml = '';
           if (!check.passed) {
             if (check.id === 'lockout') {
@@ -1757,20 +2065,23 @@ function showPreflightCheckModal(onSuccess) {
           preflightRequestBtn.addEventListener('click', () => {
             const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
             const username = getStudentName();
-            
-            safeFetch(`${origin}/api/unlock-request`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username })
-            })
-            .then(() => {
-              preflightRequestBtn.disabled = true;
-              preflightRequestBtn.textContent = 'Unlock Requested';
-              preflightRequestBtn.style.setProperty('background', '#7f8c8d', 'important');
-              preflightRequestBtn.style.setProperty('cursor', 'not-allowed', 'important');
-              showToastNotification('Unlock request sent to administrator.');
-            })
-            .catch(err => console.error('Unlock request post error:', err));
+
+            chrome.storage.local.get(['examSessionId'], (res) => {
+              const sessionId = res.examSessionId || '';
+              safeFetch(`${origin}/api/unlock-request`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, sessionId, browserSuffix: getBrowserSuffixOnly() })
+              })
+                .then(() => {
+                  preflightRequestBtn.disabled = true;
+                  preflightRequestBtn.textContent = 'Unlock Requested';
+                  preflightRequestBtn.style.setProperty('background', '#7f8c8d', 'important');
+                  preflightRequestBtn.style.setProperty('cursor', 'not-allowed', 'important');
+                  showToastNotification('Unlock request sent to administrator.');
+                })
+                .catch(err => console.error('Unlock request post error:', err));
+            });
           });
         }
 
@@ -1778,18 +2089,21 @@ function showPreflightCheckModal(onSuccess) {
         retryBtn.style.opacity = '1';
 
         if (allPassed) {
+          lastChecksPassed = true;
           startBtn.disabled = false;
           startBtn.style.setProperty('background', '#22c55e', 'important');
           startBtn.style.setProperty('color', '#ffffff', 'important');
           startBtn.style.setProperty('cursor', 'pointer', 'important');
           startBtn.style.setProperty('pointer-events', 'auto', 'important');
         } else {
+          lastChecksPassed = false;
           // If lockout failed, poll to automatically re-run checks once admin unlocks
           if (!results[7].passed) {
             const origin = window.location.origin.includes('localhost') ? window.location.origin : 'http://localhost:8000';
             const username = getStudentName();
             preflightPollInterval = setInterval(() => {
-              safeFetch(`${origin}/api/check-lockout?username=${encodeURIComponent(username)}`)
+              const suffix = getBrowserSuffixOnly();
+              safeFetch(`${origin}/api/check-lockout?username=${encodeURIComponent(username)}&browserSuffix=${encodeURIComponent(suffix)}`)
                 .then(data => {
                   if (!data.isBlocked) {
                     clearInterval(preflightPollInterval);
@@ -1807,12 +2121,32 @@ function showPreflightCheckModal(onSuccess) {
 
   retryBtn.addEventListener('click', executeChecks);
   startBtn.addEventListener('click', () => {
-    if (preflightPollInterval) {
-      clearInterval(preflightPollInterval);
-      preflightPollInterval = null;
+    // SECURITY: never trust the DOM here. A student can run, from the console:
+    //   const b = document.getElementById('prodigy-preflight-start-btn');
+    //   b.removeAttribute('disabled'); b.click();
+    // to fire this handler even while checks are failing. Guard on the closure
+    // flag (unreachable from the page) AND re-validate synchronously before
+    // entering exam mode.
+    if (!lastChecksPassed) {
+      showToastNotification('Security checks not passed. Close DevTools / side panels, then re-run checks.');
+      executeChecks();
+      return;
     }
-    overlay.remove();
-    onSuccess();
+    runPreflightChecks((results) => {
+      const stillAllPassed = results.every((c) => c.passed);
+      if (!stillAllPassed) {
+        lastChecksPassed = false;
+        showToastNotification('Security violation detected \u2014 cannot enter exam mode.');
+        executeChecks();
+        return;
+      }
+      if (preflightPollInterval) {
+        clearInterval(preflightPollInterval);
+        preflightPollInterval = null;
+      }
+      overlay.remove();
+      onSuccess();
+    });
   });
 
   executeChecks();
@@ -1855,6 +2189,27 @@ try {
       if (changes.copyPasteAction) {
         localCopyPasteAction = changes.copyPasteAction.newValue || 'flag';
       }
+      if (changes.noRestrictions) {
+        localNoRestrictions = !!changes.noRestrictions.newValue;
+      }
+      if (changes.requireFullscreen) {
+        localRequireFullscreen = changes.requireFullscreen.newValue !== false;
+      }
+      if (changes.blockDevTools) {
+        localBlockDevTools = changes.blockDevTools.newValue !== false;
+      }
+      if (changes.blockTabSwitch) {
+        localBlockTabSwitch = changes.blockTabSwitch.newValue !== false;
+      }
+      if (changes.blockRightClick) {
+        localBlockRightClick = changes.blockRightClick.newValue !== false;
+      }
+      if (changes.limitExits) {
+        localLimitExits = changes.limitExits.newValue === true;
+      }
+      if (changes.maxExits) {
+        localMaxExits = (typeof changes.maxExits.newValue === 'number' && changes.maxExits.newValue > 0) ? changes.maxExits.newValue : 3;
+      }
       if (changes.lockoutExpiry) {
         localLockoutExpiry = changes.lockoutExpiry.newValue || 0;
       }
@@ -1872,6 +2227,7 @@ try {
 }
 
 let isPreflightPassed = false;
+let isActionConfirmed = false;
 
 document.addEventListener('click', (event) => {
   // Completely disable any proctor click interception on the admin console
@@ -1888,6 +2244,23 @@ document.addEventListener('click', (event) => {
   const rawText = button.textContent ? button.textContent.trim().toLowerCase() : '';
   const text = rawText.replace(/\s+/g, ' ');
 
+  const isSubmitBtn = text.includes('submit exam') || text === 'submit';
+  const isExitBtn = text === 'exit' || text.includes('exit exam');
+
+  // If the action was already confirmed, allow the programmatic click to pass
+  // through to the website's own handler so the exam actually closes/submits.
+  if (isActionConfirmed && (isSubmitBtn || isExitBtn)) {
+    return;
+  }
+
+  if (isSubmitBtn || isExitBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    promptEndExam(isSubmitBtn ? 'submit' : 'exit', button);
+    return;
+  }
+
   if (text.includes('start diagnostic exam')) {
     if (isPreflightPassed) {
       return; // Allow the programmatically triggered click to propagate to the website
@@ -1903,7 +2276,19 @@ document.addEventListener('click', (event) => {
       safeSendMessage({ type: 'START_EXAM' }, (response) => {
         if (response && response.success) {
           startExamLocal(response.violations || 0);
-          
+
+          // Only reset the exit counter for a genuinely NEW attempt — NOT when
+          // re-entering the exam after an exit. Re-entries must preserve the
+          // running exit count, otherwise the limit never enforces (the count
+          // would reset to 0 every time the student re-opens the exam).
+          chrome.storage.local.get(['examAttemptActive'], (attemptRes) => {
+            if (attemptRes.examAttemptActive !== true) {
+              chrome.storage.local.set({ examExitCount: 0, examAttemptActive: true });
+            } else {
+              chrome.storage.local.set({ examAttemptActive: true });
+            }
+          });
+
           // Re-trigger the click event so that the website's own listener handles it
           button.click();
 
@@ -1916,13 +2301,6 @@ document.addEventListener('click', (event) => {
     });
   }
 
-  if (text.includes('submit exam') || text === 'submit' || text === 'exit') {
-    safeSendMessage({ type: 'SUBMIT_EXAM' }, (response) => {
-      if (response && response.success) {
-        stopExamLocal();
-      }
-    });
-  }
 }, true);
 
 // --------------------------------------------------------------------------
@@ -2013,29 +2391,29 @@ function makeDraggable(element, handle) {
   function dragMouseDown(e) {
     e = e || window.event;
     if (e.target.closest('.prodigy-chat-close-btn') || e.target.closest('button, input, textarea')) return;
-    
+
     startX = e.clientX;
     startY = e.clientY;
     hasDragged = false;
-    
+
     e.preventDefault();
     pos3 = e.clientX;
     pos4 = e.clientY;
-    
+
     document.addEventListener('mouseup', closeDragElement);
     document.addEventListener('mousemove', elementDrag);
   }
 
   function dragTouchStart(e) {
     if (e.target.closest('.prodigy-chat-close-btn') || e.target.closest('button, input, textarea')) return;
-    
+
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     hasDragged = false;
-    
+
     pos3 = e.touches[0].clientX;
     pos4 = e.touches[0].clientY;
-    
+
     document.addEventListener('touchend', closeDragElement);
     document.addEventListener('touchmove', elementTouchDrag, { passive: false });
   }
@@ -2043,22 +2421,22 @@ function makeDraggable(element, handle) {
   function elementDrag(e) {
     e = e || window.event;
     e.preventDefault();
-    
+
     if (Math.abs(e.clientX - startX) > 4 || Math.abs(e.clientY - startY) > 4) {
       hasDragged = true;
     }
-    
+
     pos1 = pos3 - e.clientX;
     pos2 = pos4 - e.clientY;
     pos3 = e.clientX;
     pos4 = e.clientY;
-    
+
     const topPos = element.offsetTop - pos2;
     const leftPos = element.offsetLeft - pos1;
-    
+
     const maxTop = window.innerHeight - element.offsetHeight;
     const maxLeft = window.innerWidth - element.offsetWidth;
-    
+
     element.style.top = Math.max(10, Math.min(topPos, maxTop - 10)) + "px";
     element.style.left = Math.max(10, Math.min(leftPos, maxLeft - 10)) + "px";
     element.style.bottom = "auto";
@@ -2067,22 +2445,22 @@ function makeDraggable(element, handle) {
 
   function elementTouchDrag(e) {
     e.preventDefault();
-    
+
     if (Math.abs(e.touches[0].clientX - startX) > 4 || Math.abs(e.touches[0].clientY - startY) > 4) {
       hasDragged = true;
     }
-    
+
     pos1 = pos3 - e.touches[0].clientX;
     pos2 = pos4 - e.touches[0].clientY;
     pos3 = e.touches[0].clientX;
     pos4 = e.touches[0].clientY;
-    
+
     const topPos = element.offsetTop - pos2;
     const leftPos = element.offsetLeft - pos1;
-    
+
     const maxTop = window.innerHeight - element.offsetHeight;
     const maxLeft = window.innerWidth - element.offsetWidth;
-    
+
     element.style.top = Math.max(10, Math.min(topPos, maxTop - 10)) + "px";
     element.style.left = Math.max(10, Math.min(leftPos, maxLeft - 10)) + "px";
     element.style.bottom = "auto";
@@ -2094,7 +2472,7 @@ function makeDraggable(element, handle) {
     document.removeEventListener('mousemove', elementDrag);
     document.removeEventListener('touchend', closeDragElement);
     document.removeEventListener('touchmove', elementTouchDrag);
-    
+
     setTimeout(() => {
       hasDragged = false;
     }, 50);
@@ -2158,10 +2536,10 @@ function createSelectionTooltip(x, y, text) {
   selectionTooltip.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     chatWidget.classList.remove('prodigy-hidden');
     askAIQuery(text);
-    
+
     window.getSelection().removeAllRanges();
     removeSelectionTooltip();
   });
@@ -2289,37 +2667,395 @@ try {
     chrome.storage.local.get(['examModeActive', 'violations', 'lockoutExpiry', 'copyPasteAction'], (result) => {
       if (!chrome.runtime?.id) return;
 
-      initChatbot(result.examModeActive);
+      const username = getStudentName();
 
-      localCopyPasteAction = result.copyPasteAction || 'flag';
-      localLockoutExpiry = result.lockoutExpiry || 0;
-      localViolations = result.violations || 0;
+      // -----------------------------------------------------------------------
+      // ANTI-TAMPER SHIELD: Cross-Browser Lockout Sync
+      // -----------------------------------------------------------------------
+      // Route the check through background.js so it benefits from:
+      //   1. Canonical username matching (strips browser suffix) for cross-browser locks
+      //   2. Browser-switch evasion detection with extended penalty
+      //   3. Audit trail logging directly on the server
+      // -----------------------------------------------------------------------
+      safeSendMessage({ type: 'CHECK_SERVER_LOCKOUT', username }, (serverData) => {
+        if (serverData && serverData.isBlocked && serverData.lockoutExpiry && serverData.lockoutExpiry > Date.now()) {
+          localCopyPasteAction = result.copyPasteAction || 'flag';
+          localLockoutExpiry = serverData.lockoutExpiry;
+          localViolations = result.violations || 0;
 
-      if (!result.examModeActive) return;
+          chrome.storage.local.set({
+            examModeActive: true,
+            lockoutExpiry: serverData.lockoutExpiry
+          });
 
-      const now = Date.now();
-      const isLockedOut = result.lockoutExpiry && now < result.lockoutExpiry;
+          initChatbot(true);
+          startExamLocal(0);
+          const remaining = Math.max(0, Math.ceil((serverData.lockoutExpiry - Date.now()) / 1000));
 
-      if (isLockedOut) {
-        // Enforce the lockout: do NOT allow bypassing via refresh/navigation!
-        startExamLocal(result.violations || 0);
-        const remaining = Math.ceil((result.lockoutExpiry - now) / 1000);
-        showLockoutOverlay(result.violations || 0, remaining);
-        return;
+          if (serverData.browserSwitchDetected) {
+            // Show a special browser-switch evasion lockout overlay
+            showLockoutOverlay(result.violations || 0, remaining, {
+              title: 'EVASION DETECTED',
+              description: `Prodigy Shield detected that you switched browsers to bypass an active lockout. ` +
+                `This action has been flagged as a high-severity integrity violation and logged. ` +
+                `An extended lockout penalty has been applied.`,
+              reason: 'Browser-switch evasion: attempted to bypass active lockout',
+              statLabel: 'EVASION PENALTY',
+              statValue: `${Math.ceil(remaining / 60)} min`
+            });
+          } else {
+            // Standard restored lockout (refresh / new tab / same browser switch)
+            showLockoutOverlay(result.violations || 0, remaining);
+          }
+          return;
+        }
+
+        // No server-side lock — fall back to local storage state
+        runOriginalInit(result);
+      });
+
+      function runOriginalInit(res) {
+        initChatbot(res.examModeActive);
+
+        localCopyPasteAction = res.copyPasteAction || 'flag';
+        localLockoutExpiry = res.lockoutExpiry || 0;
+        localViolations = res.violations || 0;
+
+        if (!res.examModeActive) return;
+
+        const now = Date.now();
+        const isLockedOut = res.lockoutExpiry && now < res.lockoutExpiry;
+
+        if (isLockedOut) {
+          // Enforce the lockout: do NOT allow bypassing via refresh/navigation!
+          startExamLocal(0);
+          const remaining = Math.ceil((res.lockoutExpiry - now) / 1000);
+          showLockoutOverlay(res.violations || 0, remaining);
+          return;
+        }
+
+        if (isPageReload) {
+          safeSendMessage({ type: 'REPORT_VIOLATION', reason: 'Page refreshed during exam' });
+          safeSendMessage({ type: 'SUBMIT_EXAM' });
+          showRefreshDetectedPrompt();
+          return;
+        }
+
+        // Always restore the exam session on load if active, and let the question monitor loop
+        // bounds check and recover the layout or auto-submit if genuinely missing for >3s.
+        restoreExamSession(res);
       }
-
-      if (isPageReload) {
-        safeSendMessage({ type: 'REPORT_VIOLATION', reason: 'Page refreshed during exam' });
-        safeSendMessage({ type: 'SUBMIT_EXAM' });
-        showRefreshDetectedPrompt();
-        return;
-      }
-
-      // Always restore the exam session on load if active, and let the question monitor loop
-      // bounds check and recover the layout or auto-submit if genuinely missing for >3s.
-      restoreExamSession(result);
     });
   }
 } catch (err) {
   // Context invalidated -- ignore
+}
+
+
+// --------------------------------------------------------------------------
+// CUSTOM CONFIRM / EXIT MODALS
+// --------------------------------------------------------------------------
+function showCustomConfirmModal(title, message, confirmText, confirmAction, cancelAction) {
+  let overlay = document.getElementById('prodigy-confirm-overlay');
+  if (overlay) overlay.remove();
+
+  overlay = document.createElement('div');
+  overlay.id = 'prodigy-confirm-overlay';
+  overlay.className = 'prodigy-overlay';
+  overlay.style.zIndex = '99999999';
+
+  overlay.innerHTML = `
+    <div class="prodigy-modal" style="border-color: #3b82f6 !important; max-width: 450px !important;">
+      <div class="prodigy-warning-icon" style="color: #3b82f6 !important;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="48" height="48">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+        </svg>
+      </div>
+      <h2 class="prodigy-warning-title">${title}</h2>
+      <p class="prodigy-warning-desc" style="color: #e2e8f0 !important; font-size: 15px !important; margin-bottom: 24px !important;">${message}</p>
+      <div style="display: flex; gap: 12px; width: 100%;">
+        <button id="prodigy-confirm-cancel-btn" class="prodigy-btn" style="background: #334155 !important; color: white !important; flex: 1;">Cancel</button>
+        <button id="prodigy-confirm-ok-btn" class="prodigy-btn" style="background: #3b82f6 !important; color: white !important; flex: 1;">${confirmText}</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const cancelBtn = document.getElementById('prodigy-confirm-cancel-btn');
+  const okBtn = document.getElementById('prodigy-confirm-ok-btn');
+
+  if (cancelBtn) cancelBtn.addEventListener('click', () => {
+    overlay.remove();
+    if (cancelAction) cancelAction();
+  });
+
+  if (okBtn) okBtn.addEventListener('click', () => {
+    overlay.remove();
+    if (confirmAction) confirmAction();
+  });
+}
+
+function showExamClosedModal() {
+  let overlay = document.getElementById('prodigy-closed-overlay');
+  if (overlay) overlay.remove();
+
+  overlay = document.createElement('div');
+  overlay.id = 'prodigy-closed-overlay';
+  overlay.className = 'prodigy-overlay';
+  overlay.style.zIndex = '99999999';
+
+  overlay.innerHTML = `
+    <div class="prodigy-modal" style="border-color: #10b981 !important; max-width: 450px !important;">
+      <div class="prodigy-warning-icon" style="color: #10b981 !important;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="48" height="48">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+      </div>
+      <h2 class="prodigy-warning-title">Exam Successfully Closed</h2>
+      <p class="prodigy-warning-desc" style="color: #e2e8f0 !important; font-size: 14px !important; margin-bottom: 20px !important;">
+        You have securely exited the exam environment. All Prodigy Shield monitoring and security restrictions have been deactivated.
+        <br><br>
+        You are now free to use your browser normally.
+      </p>
+      <button id="prodigy-closed-dismiss-btn" class="prodigy-btn" style="background: #10b981 !important; color: white !important;">Back to Dashboard</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const dismissBtn = document.getElementById('prodigy-closed-dismiss-btn');
+  if (dismissBtn) dismissBtn.addEventListener('click', () => {
+    overlay.remove();
+  });
+}
+
+
+// --------------------------------------------------------------------------
+// EXAM EXIT / SUBMIT FLOW + EXIT LIMIT ENFORCEMENT
+// --------------------------------------------------------------------------
+function finalizeEndExam(triggerEl) {
+  // Turn off exam security immediately, notify server, then trigger the
+  // website's own exit/submit control so the exam actually closes.
+  isActionConfirmed = true;
+  stopExamLocal();
+  safeSendMessage({ type: 'SUBMIT_EXAM' });
+
+  setTimeout(() => {
+    if (triggerEl) triggerEl.click();
+    setTimeout(() => {
+      showExamClosedModal();
+      isActionConfirmed = false;
+    }, 200);
+  }, 50);
+}
+
+function promptEndExam(kind, triggerEl) {
+  const isSubmit = kind === 'submit';
+
+  // Submitting is final and always allowed. Only exits are rate-limited.
+  if (isSubmit || !localLimitExits) {
+    const title = isSubmit ? "Submit Exam?" : "Exit Exam?";
+    const message = isSubmit
+      ? "Are you sure you want to submit your exam? You cannot undo this action."
+      : "Are you sure you want to exit the exam? Exam security will be temporarily disabled.";
+    const btnText = isSubmit ? "Submit" : "Exit";
+    showCustomConfirmModal(title, message, btnText, () => {
+      // Submitting ends the attempt: clear the exit counter so a future
+      // brand-new attempt starts fresh.
+      if (isSubmit) {
+        chrome.storage.local.set({ examAttemptActive: false, examExitCount: 0 });
+      }
+      finalizeEndExam(triggerEl);
+    }, () => {});
+    return;
+  }
+
+  // Exit-limit feature is enabled: check remaining exits.
+  chrome.storage.local.get(['maxExits', 'examExitCount'], (res) => {
+    const max = (typeof res.maxExits === 'number' && res.maxExits > 0) ? res.maxExits : localMaxExits;
+    const used = res.examExitCount || 0;
+
+    if (used >= max) {
+      // Student has burned through every allowed exit — lock the session down.
+      triggerExitLockdown(used, max);
+      return;
+    }
+
+    const remaining = max - used;
+    const message = `Are you sure you want to exit? Exam security will be temporarily disabled.<br><br>` +
+      `<strong>You have ${remaining} of ${max} exit${max === 1 ? '' : 's'} remaining.</strong> ` +
+      `Once you run out, you will not be able to exit again and must complete your exam.`;
+
+    showCustomConfirmModal("Exit Exam?", message, `Exit (${remaining} left)`, () => {
+      // Consume one exit before ending the exam.
+      chrome.storage.local.set({ examExitCount: used + 1 });
+      finalizeEndExam(triggerEl);
+    }, () => {});
+  });
+}
+
+function showExitLimitReachedModal(max) {
+  let overlay = document.getElementById('prodigy-exit-limit-overlay');
+  if (overlay) overlay.remove();
+
+  overlay = document.createElement('div');
+  overlay.id = 'prodigy-exit-limit-overlay';
+  overlay.className = 'prodigy-overlay';
+  overlay.style.zIndex = '99999999';
+
+  overlay.innerHTML = `
+    <div class="prodigy-modal" style="border-color: #ef4444 !important; max-width: 450px !important;">
+      <div class="prodigy-warning-icon" style="color: #ef4444 !important;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="48" height="48">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+        </svg>
+      </div>
+      <h2 class="prodigy-warning-title">Exit Limit Reached</h2>
+      <p class="prodigy-warning-desc" style="color: #e2e8f0 !important; font-size: 14px !important; margin-bottom: 20px !important;">
+        You have used all <strong>${max}</strong> of your allowed exits for this exam. To protect exam integrity, exiting is now disabled.
+        <br><br>
+        Please finish and submit your exam.
+      </p>
+      <button id="prodigy-exit-limit-dismiss-btn" class="prodigy-btn" style="background: #ef4444 !important; color: white !important;">Return to Exam</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const dismissBtn = document.getElementById('prodigy-exit-limit-dismiss-btn');
+  if (dismissBtn) dismissBtn.addEventListener('click', () => {
+    overlay.remove();
+  });
+}
+
+
+// --------------------------------------------------------------------------
+// EXIT-LIMIT LOCKDOWN
+// Triggered when a student has used up every allowed exit and tries to leave
+// the exam again. Reuses the standard lockout overlay (with server-side
+// registration + auto-resume) but with exit-specific wording, and persists a
+// lockoutExpiry so the lockdown survives refresh / navigation.
+// --------------------------------------------------------------------------
+function triggerExitLockdown(usedExits, maxExits) {
+  const LOCKDOWN_SECONDS = 60;
+  const expiry = Date.now() + LOCKDOWN_SECONDS * 1000;
+
+  // Persist locally so a refresh/navigation re-enforces the lockdown.
+  // Also reset the exit counter: the lockdown IS the penalty, so once it is
+  // applied the student's exit allowance is refreshed (they get a fresh
+  // {maxExits}/{maxExits} once the lockout ends).
+  localLockoutExpiry = expiry;
+  chrome.storage.local.set({ lockoutExpiry: expiry, examExitCount: 0 });
+
+  showLockoutOverlay(0, LOCKDOWN_SECONDS, {
+    title: 'EXAM LOCKED',
+    description: `You have exited the exam too many times ` +
+      `(<strong>${usedExits}/${maxExits}</strong> exits used). ` +
+      `To protect exam integrity, your session has been locked. It will unlock ` +
+      `automatically, or you can request an administrator unlock.`,
+    reason: 'Exceeded the allowed number of exam exits',
+    statLabel: 'EXITS USED',
+    statValue: `${usedExits}/${maxExits}`
+  });
+}
+
+
+// --------------------------------------------------------------------------
+// LOCKOUT CLOCK WIDGET ENHANCEMENTS
+// 1. Animate the clock hands so the widget looks alive (hands rotate).
+// 2. When hovered, fade the widget out and make it click-through so the
+//    student can interact with whatever is behind it. Because a click-through
+//    element can no longer fire its own mouseleave, we watch the cursor at the
+//    document level and restore it once the pointer leaves the widget's box.
+// Styles are injected here (not content.css) so this is fully self-contained.
+// --------------------------------------------------------------------------
+function ensureClockAnimationStyles() {
+  if (document.getElementById('prodigy-clock-anim-style')) return;
+  const style = document.createElement('style');
+  style.id = 'prodigy-clock-anim-style';
+  style.textContent = `
+    @keyframes prodigy-clock-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes prodigy-clock-pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.09); }
+      100% { transform: scale(1); }
+    }
+    .prodigy-lockout-clock-widget {
+      transition: opacity 0.25s ease !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+    .prodigy-lockout-clock-widget .prodigy-clock-premium {
+      animation: prodigy-clock-pulse 1s ease-in-out infinite !important;
+      transform-origin: center center !important;
+    }
+    .prodigy-lockout-clock-widget .prodigy-clock-hand {
+      transform-box: view-box !important;
+      transform-origin: 50px 50px !important;
+    }
+    .prodigy-lockout-clock-widget .prodigy-clock-hand.second {
+      animation: prodigy-clock-spin 60s steps(60, end) infinite;
+    }
+    .prodigy-lockout-clock-widget .prodigy-clock-hand.minute {
+      animation: prodigy-clock-spin 60s linear infinite;
+    }
+    .prodigy-lockout-clock-widget .prodigy-clock-hand.hour {
+      animation: prodigy-clock-spin 720s linear infinite;
+    }
+    .prodigy-lockout-clock-widget.prodigy-clock-seethrough {
+      opacity: 0.12 !important;
+      pointer-events: none !important;
+    }
+  `;
+  (document.head || document.documentElement).appendChild(style);
+}
+
+function setupClockSeeThrough(clockEl) {
+  if (!clockEl) return;
+  let isSeeThrough = false;
+
+  const watch = (e) => {
+    const r = clockEl.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right ||
+        e.clientY < r.top || e.clientY > r.bottom) {
+      isSeeThrough = false;
+      clockEl.classList.remove('prodigy-clock-seethrough');
+      document.removeEventListener('mousemove', watch, true);
+    }
+  };
+
+  clockEl.addEventListener('mouseenter', () => {
+    if (isSeeThrough) return;
+    isSeeThrough = true;
+    clockEl.classList.add('prodigy-clock-seethrough');
+    // Widget is now click-through, so it can't fire its own mouseleave.
+    document.addEventListener('mousemove', watch, true);
+  });
+}
+
+
+// --------------------------------------------------------------------------
+// CLOCK TIME FORMATTER
+// Formats a remaining-seconds value for the floating lockout clock:
+//   >= 1 hour  ->  "HH:MM Hrs"  (e.g. 01:32 Hrs)
+//   < 1 hour   ->  "MM:SS min"  (e.g. 05:30 min)
+// --------------------------------------------------------------------------
+function formatClockTimeParts(totalSeconds) {
+  const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  if (s >= 3600) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return { value: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, unit: 'Hrs' };
+  }
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return { value: `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`, unit: 'min' };
 }

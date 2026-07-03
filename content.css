@@ -769,7 +769,7 @@ body:has(#prodigy-refresh-prompt) {
   display: flex !important;
   flex-direction: column !important;
   gap: 10px !important;
-  max-height: 280px !important;
+  max-height: 520px !important;
   overflow-y: auto !important;
   margin-bottom: 20px !important;
   padding-right: 6px !important;

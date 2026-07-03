@@ -276,6 +276,23 @@
         <div class="description">Toggle right-click blocking during the exam.</div>
       </div>
 
+      <!-- Limit Exam Exits Toggle -->
+      <div class="field">
+        <label for="limitexits">Limit Exam Exits</label>
+        <select id="limitexits">
+          <option value="false">No (Allow unlimited exits)</option>
+          <option value="true">Yes (Restrict how many times a student can exit)</option>
+        </select>
+        <div class="description">Prevents students from repeatedly exiting to disable security and look up answers. Each exit temporarily disables exam security.</div>
+      </div>
+
+      <!-- Max Exit Attempts -->
+      <div class="field">
+        <label for="maxexits">Max Exit Attempts</label>
+        <input type="number" id="maxexits" min="1" max="20" value="3" />
+        <div class="description">The number of times a student may exit before exiting is locked (e.g. 3 = "3/3 exits"). Only applies when "Limit Exam Exits" is enabled.</div>
+      </div>
+
       <button id="save-btn" class="btn">Apply Global Configuration</button>
       <div id="status" class="status-msg"></div>
     </div>
@@ -316,7 +333,7 @@
         <thead>
           <tr style="border-bottom: 1px solid #2d2d2d; color: #858585;">
             <th style="padding: 10px 8px;">Student Name</th>
-            <th style="padding: 10px 8px; text-align: center;">Total Flags</th>
+            <th style="padding: 10px 8px; text-align: center;">Violation Events / Points</th>
             <th style="padding: 10px 8px; text-align: center;">Total Lockouts</th>
             <th style="padding: 10px 8px;">Latest Event</th>
             <th style="padding: 10px 8px;">Last Active</th>
@@ -360,6 +377,8 @@
     const blockDevToolsSelect = document.getElementById('blockdevtools');
     const blockTabSwitchSelect = document.getElementById('blocktabswitch');
     const blockRightClickSelect = document.getElementById('blockrightclick');
+    const limitExitsSelect = document.getElementById('limitexits');
+    const maxExitsInput = document.getElementById('maxexits');
     const saveBtn = document.getElementById('save-btn');
     const statusMsg = document.getElementById('status');
 
@@ -386,6 +405,8 @@
         blockDevToolsSelect.value = String(data.blockDevTools !== undefined ? data.blockDevTools : true);
         blockTabSwitchSelect.value = String(data.blockTabSwitch !== undefined ? data.blockTabSwitch : true);
         blockRightClickSelect.value = String(data.blockRightClick !== undefined ? data.blockRightClick : true);
+        limitExitsSelect.value = String(data.limitExits !== undefined ? data.limitExits : false);
+        maxExitsInput.value = data.maxExits || 3;
       })
       .catch(err => {
         console.error('Error fetching config:', err);
@@ -404,9 +425,16 @@
       const blockdevtools = blockDevToolsSelect.value === 'true';
       const blocktabswitch = blockTabSwitchSelect.value === 'true';
       const blockrightclick = blockRightClickSelect.value === 'true';
+      const limitexits = limitExitsSelect.value === 'true';
+      const maxexits = parseInt(maxExitsInput.value, 10);
 
       if (isNaN(milestone) || milestone < 1 || isNaN(duration) || duration < 1) {
         showStatus('Please enter valid numbers.', true);
+        return;
+      }
+
+      if (limitexits && (isNaN(maxexits) || maxexits < 1)) {
+        showStatus('Please enter a valid number of max exit attempts.', true);
         return;
       }
 
@@ -425,7 +453,9 @@
           requireFullscreen: requirefullscreen,
           blockDevTools: blockdevtools,
           blockTabSwitch: blocktabswitch,
-          blockRightClick: blockrightclick
+          blockRightClick: blockrightclick,
+          limitExits: limitexits,
+          maxExits: maxexits
         })
       })
       .then(res => {
@@ -468,11 +498,11 @@
             }
 
             const requestBadge = session.unlockRequested
-              ? '<span class="badge badge-request">Yes (Unlock Requested)</span>'
+              ? `<span class="badge badge-request">Appeal Submitted</span>${session.appealReason ? `<div style="margin-top:6px; font-size:11px; color:#e2e2e2; background:#2a2a2a; border:1px solid #3d3d3d; border-radius:4px; padding:6px 8px; max-width:280px; white-space:normal; line-height:1.45;"><span style="color:#9a9a9a;">Reason:</span> ${escapeHtml(session.appealReason)}</div>` : ''}`
               : '<span class="badge badge-idle" style="border:none;">No</span>';
 
             const actionBtn = (session.isBlocked || session.unlockRequested)
-              ? `<button class="btn btn-unlock" style="width: auto !important; padding: 4px 10px !important; background: #22c55e !important; font-size: 11px !important; margin: 4px 0 !important;" onclick="reactivateUser('${session.username}')">Unlock & Reactivate</button>`
+              ? `<button class="btn btn-unlock" style="width: auto !important; padding: 4px 10px !important; background: #22c55e !important; font-size: 11px !important; margin: 4px 0 !important;" onclick="reactivateUser('${session.username}')">Approve & Unlock</button>${session.unlockRequested ? `<button class="btn" style="width: auto !important; padding: 4px 10px !important; background: #ef4444 !important; color:#fff !important; font-size: 11px !important; margin: 4px 0 4px 6px !important;" onclick="denyAppeal('${session.username}')">Deny</button>` : ''}`
               : '<span style="color:#858585; font-size:11px;">No Action</span>';
 
             row.innerHTML = `
@@ -488,6 +518,29 @@
         })
         .catch(err => console.error('Error fetching sessions:', err));
     }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    window.denyAppeal = function(username) {
+      fetch('/api/deny-appeal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        showStatus(`Appeal from "${username}" denied. User remains locked.`);
+        fetchSessions();
+        if (typeof fetchHallOfFame === 'function') fetchHallOfFame();
+      })
+      .catch(err => {
+        showStatus('Failed to deny appeal.', true);
+      });
+    };
 
     window.reactivateUser = function(username) {
       fetch('/api/reactivate', {
@@ -541,10 +594,13 @@
             }
 
             const formattedTime = new Date(record.lastActive).toLocaleString();
+            
+            const events = record.violationEvents || 0;
+            const points = record.flagPoints || record.cumulativeFlags || 0;
 
             row.innerHTML = `
               <td style="padding: 10px 8px; color: #ffffff; font-weight: 500;">${record.username}</td>
-              <td style="padding: 10px 8px; text-align: center; color: #f87171; font-weight: 600;">${record.cumulativeFlags || 0}</td>
+              <td style="padding: 10px 8px; text-align: center; color: #f87171; font-weight: 600;">${events} events / ${points} pts</td>
               <td style="padding: 10px 8px; text-align: center; color: #f43f5e; font-weight: 600;">${record.cumulativeLocks || 0}</td>
               <td style="padding: 10px 8px; color: #b3b3b3; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${lastEventStr}</td>
               <td style="padding: 10px 8px; color: #858585; font-size: 11px;">${formattedTime}</td>
@@ -588,9 +644,17 @@
           else if (event.type === 'start') badgeClass += ' timeline-badge-start';
           else if (event.type === 'submit') badgeClass += ' timeline-badge-submit';
 
+          let detailHtml = event.detail;
+          if (event.sessionId) {
+            detailHtml += ` <span style="font-size: 10px; color: #888888; font-family: monospace;">(${event.sessionId})</span>`;
+          }
+          if (event.weight !== undefined) {
+            detailHtml += ` <span style="font-size: 10px; color: #ef4444; font-weight: 600;">(pts: ${event.weight})</span>`;
+          }
+
           item.innerHTML = `
             <span class="${badgeClass}">${event.type.replace('_', ' ')}</span>
-            <span class="timeline-detail">${event.detail}</span>
+            <span class="timeline-detail">${detailHtml}</span>
             <span class="timeline-time">${formattedTime}</span>
           `;
           contentEl.appendChild(item);
@@ -640,14 +704,18 @@
         return;
       }
       
-      let csvRows = ["Student Name,Cumulative Flags,Cumulative Lockouts,Event Type,Event Detail,Event Timestamp"];
+      let csvRows = ["Student Name,Violation Events,Flag Points,Cumulative Lockouts,Event Type,Event Detail,Event Timestamp,Session ID,Weight"];
       
       fameData.forEach(record => {
+        const events = record.violationEvents || 0;
+        const points = record.flagPoints || record.cumulativeFlags || 0;
         if (!record.history || record.history.length === 0) {
-          csvRows.push(`"${record.username.replace(/"/g, '""')}",${record.cumulativeFlags || 0},${record.cumulativeLocks || 0},"N/A","No history recorded","${new Date(record.lastActive).toISOString()}"`);
+          csvRows.push(`"${record.username.replace(/"/g, '""')}",${events},${points},${record.cumulativeLocks || 0},"N/A","No history recorded","${new Date(record.lastActive).toISOString()}","",""`);
         } else {
           record.history.forEach(event => {
-            csvRows.push(`"${record.username.replace(/"/g, '""')}",${record.cumulativeFlags || 0},${record.cumulativeLocks || 0},"${event.type}","${event.detail.replace(/"/g, '""')}","${new Date(event.timestamp).toISOString()}"`);
+            const sessId = event.sessionId || '';
+            const wt = event.weight !== undefined ? event.weight : '';
+            csvRows.push(`"${record.username.replace(/"/g, '""')}",${events},${points},${record.cumulativeLocks || 0},"${event.type}","${event.detail.replace(/"/g, '""')}","${new Date(event.timestamp).toISOString()}","${sessId}","${wt}"`);
           });
         }
       });

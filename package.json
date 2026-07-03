@@ -1,0 +1,25 @@
+{
+  "name": "prodigy_anti_cheatsystem",
+  "version": "1.0.0",
+  "description": "",
+  "main": "background.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CnnrCode/ProdigyAAIS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/CnnrCode/ProdigyAAIS/issues"
+  },
+  "homepage": "https://github.com/CnnrCode/ProdigyAAIS#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.0"
+  }
+}
