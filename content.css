@@ -743,6 +743,12 @@ body:has(#prodigy-refresh-prompt) {
   padding: 24px !important;
   width: 90% !important;
   max-width: 500px !important;
+  /* Never exceed the viewport at any zoom: flex column keeps the title and action
+     buttons pinned while only the checklist scrolls. */
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
   text-align: left !important;
   animation: prodigy-scale-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -769,7 +775,10 @@ body:has(#prodigy-refresh-prompt) {
   display: flex !important;
   flex-direction: column !important;
   gap: 10px !important;
-  max-height: 520px !important;
+  /* Take remaining modal height and scroll internally. min-height:0 lets the flex
+     item shrink so it scrolls instead of overflowing the modal. */
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
   overflow-y: auto !important;
   margin-bottom: 20px !important;
   padding-right: 6px !important;

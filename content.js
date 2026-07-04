@@ -13,6 +13,15 @@ let examUrl = null;                      // URL when exam started
 let urlCheckInterval = null;             // Interval to detect SPA navigation
 let devToolsOpen = false;                // Tracks DevTools open state
 let devToolsCheckInterval = null;
+// DevTools detection baselines. DevTools is inferred from the gap between the
+// window's OUTER size and the page viewport (all in CSS pixels). Browser chrome,
+// OS display scaling, and page zoom all change that gap WITHOUT DevTools being
+// open, so we calibrate a per-session baseline and only react to a large increase.
+// devicePixelRatio moves when zoom/scale changes (but NOT when DevTools docks), so
+// we rebaseline whenever it changes to avoid false positives.
+let devToolsWidthBaseline = null;
+let devToolsHeightBaseline = null;
+let devToolsBaselineDpr = null;
 let localCopyPasteAction = 'flag';       // Cached copy/paste action for synchronous blocking
 let isUnloading = false;                  // Tracks if page is currently refreshing/unloading
 let localLockoutExpiry = 0;               // Cached lockout expiry for synchronous pre-start checking
@@ -525,8 +534,31 @@ function stopWebsiteChatbotHider() {
   }
 }
 
+// SIZE-INDEPENDENT DevTools detector. Geometry heuristics are defeated by undocked
+// DevTools (separate window) and by device/responsive mode (which sets
+// window.innerWidth to the EMULATED device size). The `debugger` statement does not
+// depend on window geometry: it is a genuine no-op (~0ms) when DevTools is CLOSED
+// (so it never false-positives on an honest student), but pauses execution when
+// DevTools is open in ANY mode (docked, undocked, device/responsive mode). The only
+// residual bypass is manually deactivating breakpoints (Ctrl+F8), which requires a
+// browser policy to fully close.
+function detectDevToolsSizeIndependent() {
+  try {
+    const t0 = performance.now();
+    (function () { debugger; })();
+    // A real DevTools pause lasts far longer than any main-thread jank; 150ms
+    // cleanly separates "paused" from "not paused" without false positives.
+    return (performance.now() - t0) > 150;
+  } catch (e) {
+    return false;
+  }
+}
+
 function startDevToolsDetection() {
   devToolsOpen = false;
+  devToolsWidthBaseline = null;
+  devToolsHeightBaseline = null;
+  devToolsBaselineDpr = null;
   if (!localBlockDevTools || localNoRestrictions) return;
   if (devToolsCheckInterval) clearInterval(devToolsCheckInterval);
   devToolsCheckInterval = setInterval(() => {
@@ -543,37 +575,60 @@ function startDevToolsDetection() {
       let isSizeMismatch = false;
       let isSnappedOrResized = false;
 
-      if (response && response.success && response.windowWidth && response.windowHeight) {
-        const diffWidth = response.windowWidth - window.innerWidth;
-        const diffHeight = response.windowHeight - window.innerHeight;
-        
-        const isEmulated = Math.abs(window.outerWidth - response.windowWidth) > 20 ||
-                           Math.abs(window.outerHeight - response.windowHeight) > 20;
-        
-        isSizeMismatch = diffWidth > 120 || diffHeight > 120 || isEmulated;
-        
-        if (response.windowState !== 'maximized' && response.windowState !== 'fullscreen') {
-          isSnappedOrResized = true;
-        }
-      } else {
-        const DEVTOOLS_THRESHOLD = 160;
-        isSizeMismatch =
-          (window.outerWidth - window.innerWidth) > DEVTOOLS_THRESHOLD ||
-          (window.outerHeight - window.innerHeight) > DEVTOOLS_THRESHOLD;
+      // DEVTOOLS DETECTION — measure ONLY window.outer* vs window.inner* (both in
+      // CSS pixels). The old code compared chrome.windows dimensions (screen pixels)
+      // against innerWidth/innerHeight (CSS pixels); with OS display scaling
+      // (125%/150%) or non-100% page zoom those two units diverge and produced
+      // FALSE positives, flagging DevTools when nothing was open.
+      const dpr = window.devicePixelRatio || 1;
+      const widthGap = window.outerWidth - window.innerWidth;
+      const heightGap = window.outerHeight - window.innerHeight;
 
-        isSnappedOrResized = !isMobile && (
+      // Zoom / display-scale changes move devicePixelRatio (docking DevTools does
+      // NOT). When it moves, rebaseline instead of flagging — this is what prevents
+      // false positives when the student zooms or is on a scaled display.
+      if (devToolsBaselineDpr === null || Math.abs(dpr - devToolsBaselineDpr) > 0.01) {
+        devToolsBaselineDpr = dpr;
+        devToolsWidthBaseline = widthGap;
+        devToolsHeightBaseline = heightGap;
+      }
+      // The smallest gap seen at this zoom level = browser chrome only (no dock).
+      if (widthGap < devToolsWidthBaseline) devToolsWidthBaseline = widthGap;
+      if (heightGap < devToolsHeightBaseline) devToolsHeightBaseline = heightGap;
+
+      // A large INCREASE over that baseline means a panel opened: width => side dock
+      // or side panel, height => bottom-docked DevTools.
+      const sizeGrew =
+        (widthGap - devToolsWidthBaseline) > 120 ||
+        (heightGap - devToolsHeightBaseline) > 120;
+
+      // SIZE-INDEPENDENT detection catches undocked DevTools and device/responsive
+      // mode, which defeat all of the geometry checks above.
+      const debuggerDetected = detectDevToolsSizeIndependent();
+
+      isSizeMismatch = sizeGrew || debuggerDetected;
+
+      // Snap / split-screen / not-maximized uses the window STATE (reliable), never
+      // raw dimensions.
+      if (response && response.success && response.windowState) {
+        isSnappedOrResized =
+          response.windowState !== 'maximized' &&
+          response.windowState !== 'fullscreen';
+      } else if (!isMobile) {
+        isSnappedOrResized =
           window.outerWidth < (window.screen.availWidth * 0.85) ||
-          window.outerHeight < (window.screen.availHeight * 0.85)
-        );
+          window.outerHeight < (window.screen.availHeight * 0.85);
       }
 
       if (isSizeMismatch && !devToolsOpen) {
         devToolsOpen = true;
         updateShieldHealth('Interrupted');
 
-        const reason = isSnappedOrResized
-          ? 'Window snapped, split-screened, or not maximized'
-          : 'Developer Tools or Side Panel opened';
+        const reason = debuggerDetected
+          ? 'Developer Tools opened'
+          : (isSnappedOrResized
+            ? 'Window snapped, split-screened, or not maximized'
+            : 'Developer Tools or Side Panel opened');
 
         // ZERO-TOLERANCE for DevTools / side panels: force an immediate lockout
         // instead of merely adding flags. With a high milestoneInterval, a +5 flag
@@ -582,7 +637,7 @@ function startDevToolsDetection() {
         safeSendMessage({
           type: 'REPORT_VIOLATION',
           reason: reason,
-          forceLockout: !isSnappedOrResized
+          forceLockout: debuggerDetected || !isSnappedOrResized
         });
       } else if (!isSizeMismatch) {
         if (devToolsOpen) {
@@ -1885,23 +1940,17 @@ function runPreflightChecks(callback) {
           checks[1].passed = !isSnapped;
         }
 
-        // Check if DevTools is open (compare real window size vs viewport size to catch emulation & docking)
+        // DevTools detection: measure ONLY window.outer* vs window.inner* (both CSS
+        // pixels) so OS display scaling and page zoom can't create a false positive.
+        // Width gap = side dock / side panel (no browser chrome on this axis).
+        // Height gap includes the whole browser chrome, so use a chrome-aware
+        // threshold that only trips on a real bottom-docked panel.
         if (!blockDevTools || noRestrictions) {
           checks[2].passed = true;
         } else {
-          const DEVTOOLS_THRESHOLD = 120;
-          let isDevToolsOpen = false;
-          if (response.windowWidth && response.windowHeight) {
-            const diffWidth = response.windowWidth - window.innerWidth;
-            const diffHeight = response.windowHeight - window.innerHeight;
-            const isEmulated = Math.abs(window.outerWidth - response.windowWidth) > 20 ||
-                               Math.abs(window.outerHeight - response.windowHeight) > 20;
-            isDevToolsOpen = diffWidth > DEVTOOLS_THRESHOLD || diffHeight > DEVTOOLS_THRESHOLD || isEmulated;
-          } else {
-            isDevToolsOpen =
-              (window.outerWidth - window.innerWidth) > 160 ||
-              (window.outerHeight - window.innerHeight) > 160;
-          }
+          const widthGap = window.outerWidth - window.innerWidth;
+          const heightGap = window.outerHeight - window.innerHeight;
+          const isDevToolsOpen = widthGap > 160 || heightGap > 220 || detectDevToolsSizeIndependent();
           checks[2].passed = !isDevToolsOpen;
         }
       } else {
@@ -1922,9 +1971,9 @@ function runPreflightChecks(callback) {
         if (!blockDevTools || noRestrictions) {
           checks[2].passed = true;
         } else {
-          const isDevToolsOpen =
-            (window.outerWidth - window.innerWidth) > 160 ||
-            (window.outerHeight - window.innerHeight) > 160;
+          const widthGap = window.outerWidth - window.innerWidth;
+          const heightGap = window.outerHeight - window.innerHeight;
+          const isDevToolsOpen = widthGap > 160 || heightGap > 220 || detectDevToolsSizeIndependent();
           checks[2].passed = !isDevToolsOpen;
         }
       }
