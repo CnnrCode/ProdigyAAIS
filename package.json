@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/CnnrCode/ProdigyAAIS#readme",
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.0"
+    "@supabase/supabase-js": "^2.110.0",
+    "dotenv": "^17.4.2"
   }
 }

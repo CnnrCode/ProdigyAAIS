@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 const http = require('http');
 const fs   = require('fs');
 const path = require('path');
@@ -15,6 +17,12 @@ const CONFIG_PATH = path.join(__dirname, 'config.json');
 // ═══════════════════════════════════════════════════════════════════════════
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('❌  Missing SUPABASE_URL or SUPABASE_KEY in .env — server cannot start.');
+  process.exit(1);
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── ANTI-TAMPER SHIELD: Canonical Username Helpers ────────────────────────
